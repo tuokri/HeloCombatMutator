@@ -1,0 +1,62 @@
+/*
+simulated singular event Touch( Actor Other, PrimitiveComponent OtherComp, vector HitLocation, vector HitNormal )
+{
+    local KActorFromStatic NewKActor;
+    local StaticMeshComponent OtherStaticMesh;
+
+    // Don't allow flamer to stop bullets! - Austin
+    if ( (Other == None) || Other.bDeleteMe || ROFlameProjectile(Other) != none ) // Other just got destroyed in its touch?
+        return;
+
+    bHitWater = ClassIsChildOf(Other.Class, class'FluidSurfaceActor');
+
+    // don't allow projectiles to explode while spawning on clients
+    // because if that were accurate, the projectile would've been destroyed immediately on the server
+    // and therefore it wouldn't have been replicated to the client
+    if ( Other.StopsProjectile(self) && (Role == ROLE_Authority || bBegunPlay) && (bBlockedByInstigator || (Other != Instigator)) )
+    {
+        ImpactedActor = Other;
+        // Overriden because we need to retain the component that was hit to process our touch
+        ProcessBulletTouch(Other, HitLocation, HitNormal, OtherComp);
+        ImpactedActor = None;
+    }
+    // aladenberger 6/1/2011 - Check for 'CanBecomeDynamic' actors on client
+    else if ( WorldInfo.NetMode != NM_DedicatedServer )
+    {
+        if ( Other.bWorldGeometry && Other.CollisionType == COLLIDE_RO_CanBecomeDynamic )
+        {
+            OtherStaticMesh = StaticMeshComponent(OtherComp);
+            if ( OtherStaticMesh != None && OtherStaticMesh.CanBecomeDynamic() )
+            {
+                NewKActor = class'KActorFromStatic'.Static.MakeDynamic(OtherStaticMesh);
+                if ( NewKActor != None )
+                {
+                    NewKActor.TakeDamage( Damage, InstigatorController, Location, MomentumTransfer * Normal(Velocity), MyDamageType,, self);
+                }
+            }
+        }
+    }
+}
+*/
+
+/*
+simulated function ProcessTouch(Actor Other, Vector HitLocation, Vector HitNormal)
+{
+    // `log("HCProjectile.ProcessTouch(): Other=" $ Other);
+    // `log("HCProjectile.ProcessTouch(): InstigatorController=" $ HCPlayerController(InstigatorController));
+    // `log("HCProjectile.ProcessTouch(): Trigger=" $ HCHelicopterBaseProtection(Other));
+
+    if (HCHelicopterBaseProtection(Other) != None
+        && HCPlayerController(InstigatorController) != None)
+    {
+        HCPlayerController(InstigatorController).ReceiveLocalizedMessage(
+            class'HCLocalMessageHelicopterBase', HCMSGHELOBASE_ProjectileDestroyed);
+        Shutdown();
+        Destroy();
+    }
+    else
+    {
+        super.ProcessTouch(Other, HitLocation, HitNormal);
+    }
+}
+*/
