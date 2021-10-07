@@ -9,7 +9,6 @@ function PreBeginPlay()
 
     ROGameInfo(WorldInfo.Game).PlayerControllerClass = class'HCPlayerController';
     SetHUD();
-    // SetAllRolesPilot();
 }
 
 function ModifyPlayer(Pawn Other)
@@ -23,7 +22,6 @@ function ModifyPlayer(Pawn Other)
 function NotifyLogin(Controller NewPlayer)
 {
     ClientSedHUD();
-    // ClientSetPilot(NewPlayer);
 
     super.NotifyLogin(NewPlayer);
 }
@@ -39,44 +37,6 @@ function SetPilot(Controller C, optional bool bIsPilot = True)
     PawnSetPilot(ROPawn(C.Pawn), bIsPilot);
 }
 
-function ModifyPreLogin(string Options, string Address, out string ErrorMessage)
-{
-    local string UniqueID;
-    local bool bIDIsAllowed;
-
-    UniqueID = class'GameInfo'.static.ParseOption(Options, "UniqueID");
-    bIDIsAllowed = class'CustomAccessControl'.static.CheckUniqueID(UniqueID);
-
-    // No matching ID found, deny access.
-    if (!bIDIsAllowed)
-    {
-        ErrorMessage = "Only whitelisted players allowed.";
-    }
-
-    super.ModifyPreLogin(Options, Address, ErrorMessage);
-}
-
-/*
-simulated function SetAllRolesPilot()
-{
-    local int i;
-    local ROMapInfo ROMI;
-
-    ROMI = ROMapInfo(WorldInfo.GetMapInfo());
-
-    for (i = 0; i < ROMI.SouthernRoles.Length; i++)
-    {
-        switch ROMI.SouthernRoles[i].RoleInfoClass:
-            case '':
-    }
-    for (i = 0; i < ROMI.NorthernRoles.Length; i++)
-    {
-        switch ROMI.NorthernRoles[i].RoleInfoClass:
-            case '':
-    }
-}
-*/
-
 function SetHUD()
 {
     ROGameInfo(WorldInfo.Game).HUDType = class'HCHUD';
@@ -90,5 +50,4 @@ reliable client function ClientSedHUD()
 reliable client function ClientSetPilot(Controller C)
 {
     SetPilot(C);
-    // SetAllRolesPilot();
 }

@@ -1,7 +1,6 @@
 class HCPlayerController extends ROPlayerController
     config(Mutator_HeloCombat_Client);
 
-
 var int LastSpecialMessageTime;
 
 simulated function PostBeginPlay()
@@ -10,7 +9,6 @@ simulated function PostBeginPlay()
 
     if (WorldInfo.NetMode == NM_Standalone)
     {
-        // HeloCombatMutator(WorldInfo.Game.BaseMutator).SetAllRolesPilot();
         GetHCM().SetPilot(self);
         GetHCM().SetHUD();
     }
