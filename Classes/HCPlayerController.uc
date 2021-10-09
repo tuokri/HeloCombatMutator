@@ -136,3 +136,56 @@ state PlayerDriving
         // Do nothing - ROVehicle interactions are initiated clientside
     }
 }
+
+exec function ForceGunshipOrbit()
+{
+//  if( WorldInfo.NetMode == NM_Standalone )
+        DoGunshipTestOrbit();
+//  else
+//      ClientMessage("I disabled it for online, cheater. Ha!");
+}
+
+reliable private server function DoGunshipTestOrbit()
+{
+    local vector TargetLocation, SpawnLocation;
+    local ROGunshipAircraft Aircraft;
+    local ROTeamInfo ROTI;
+
+    if ( ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
+         ROPlayerReplicationInfo(PlayerReplicationInfo).RoleInfo == none ||
+         Pawn == none )
+    {
+        return;
+    }
+
+    ROTI = ROTeamInfo(PlayerReplicationInfo.Team);
+
+    if ( ROTI != none )
+    {
+        ROTI.ArtyStrikeLocation = ROTI.SavedArtilleryCoords;
+    }
+
+    if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+        TargetLocation = ROTI.ArtyStrikeLocation;
+    else
+        TargetLocation = Pawn.Location;
+
+    SpawnLocation = GetBestAircraftSpawnLoc(TargetLocation, class'ROGunshipAircraft'.default.Altitude, class'ROGunshipAircraft');
+    TargetLocation.Z = SpawnLocation.Z;
+
+    Aircraft = Spawn(class'ROGunshipAircraft',self,, SpawnLocation, rotator(TargetLocation - SpawnLocation));
+
+    if ( Aircraft == none )
+    {
+        `log("Error Spawning Support Aircraft");
+    }
+    else
+    {
+        if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+            Aircraft.TargetLocation = ROTI.ArtyStrikeLocation;
+        else
+            Aircraft.TargetLocation = Pawn.Location;
+
+        Aircraft.CalculateOrbit();
+    }
+}

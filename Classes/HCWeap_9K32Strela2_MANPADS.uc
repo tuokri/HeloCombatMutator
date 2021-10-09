@@ -6,8 +6,12 @@ var (HeatSeeker) float MaxTargetDistance;
 var (HeatSeeker) vector LockTraceExtent;
 // Override the projectile's MaxAngleDelta. For debug purposes only.
 var (HeatSeeker) float MaxAngleDeltaOverride;
+// Minimum time to track targer before locking.
+var (HeatSeeker) float MinTrackTime;
 
-var ROVehicle LastLockedTarget;
+var float LastLockStartTime;
+var Actor LastLockCandidate;
+var Actor LastLockedTarget;
 
 simulated state Active
 {
@@ -16,6 +20,7 @@ simulated state Active
         super.BeginState(PreviousStateName);
 
         LastLockedTarget = None;
+        LastLockCandidate = None;
     }
 
     simulated function bool AllowFiring(byte FireModeNum = 0)
@@ -34,14 +39,14 @@ simulated state Active
     {
         Global.Tick(DeltaTime);
 
-        if (bUsingSights && LastLockedTarget == None)
+        if (bUsingSights && LastLockedTarget == None && WorldInfo.NetMode != NM_DedicatedServer)
         {
             TryLock();
         }
     }
 }
 
-simulated function LockTarget(ROVehicle Target)
+simulated function LockTarget(Actor Target)
 {
     // TODO: Buzzer and indicator light.
     if (PlayerController(Instigator.Controller) != None)
@@ -49,21 +54,22 @@ simulated function LockTarget(ROVehicle Target)
         PlayerController(Instigator.Controller).ClientMessage("Locked Target = " $ Target);
     }
 
-    // `log("LockTarget(): Target = " $ Target,, 'StrelaDebug');
+    `log("LockTarget(): Target = " $ Target,, 'StrelaDebug');
 
     LastLockedTarget = Target;
     ServerLockTarget(Target);
 }
 
-reliable server function ServerLockTarget(ROVehicle Target)
+reliable server function ServerLockTarget(Actor Target)
 {
     LastLockedTarget = Target;
 }
 
-// TODO: lock on timer.
+// TODO: remove duplicates.
 simulated function TryLock()
 {
-    local ROVehicle Candidate;
+    local Vehicle VehicleCandidate;
+    local ROSupportAircraft AircraftCandidate;
     local vector HitLoc;
     local vector HitNorm;
     local vector End;
@@ -74,27 +80,67 @@ simulated function TryLock()
 
     DrawDebugLine(Start, End, 255, 15, 15, False);
 
-    ForEach TraceActors(class'ROVehicle', Candidate, HitLoc, HitNorm, End, Start, LockTraceExtent)
+    ForEach TraceActors(class'Vehicle', VehicleCandidate, HitLoc, HitNorm, End, Start, LockTraceExtent)
     {
-        // `log("TryLock(): Candidate = " $ Candidate,, 'StrelaDebug');
+        `log("TryLock(): VehicleCandidate = " $ VehicleCandidate,, 'StrelaDebug');
 
         // Skip myself.
-        if (Candidate == GetTraceOwner()) // || (Candidate.IsInState('Dying'))
+        if (VehicleCandidate == GetTraceOwner()) // || (VehicleCandidate.IsInState('Dying'))
         {
-            // `log("TryLock(): Candidate is trace owner ",, 'StrelaDebug');
+            // `log("TryLock(): VehicleCandidate is trace owner ",, 'StrelaDebug');
             continue;
         }
 
         // Skip teammates in team games.
-        if (WorldInfo.Game.bTeamGame && (Instigator.GetTeamNum() == Candidate.GetTeamNum()))
+        if (WorldInfo.Game.bTeamGame && (Instigator.GetTeamNum() == VehicleCandidate.GetTeamNum()))
         {
-            // `log("TryLock(): Candidate is teammate ",, 'StrelaDebug');
+            // `log("TryLock(): VehicleCandidate is teammate ",, 'StrelaDebug');
             continue;
         }
 
-        // Break on first good match.
-        LockTarget(Candidate);
-        break;
+        if (LastLockCandidate != VehicleCandidate)
+        {
+            LastLockCandidate = VehicleCandidate;
+            LastLockStartTime = WorldInfo.TimeSeconds;
+        }
+        else if (LastLockStartTime + MinTrackTime > WorldInfo.TimeSeconds)
+        {
+            LockTarget(VehicleCandidate);
+            break;
+        }
+    }
+
+    if (LastLockedTarget != None)
+    {
+        return;
+    }
+
+    ForEach TraceActors(class'ROSupportAircraft', AircraftCandidate, HitLoc, HitNorm, End, Start, LockTraceExtent)
+    {
+        `log("TryLock(): AircraftCandidate = " $ AircraftCandidate,, 'StrelaDebug');
+
+        // Skip myself.
+        if (AircraftCandidate == GetTraceOwner()) // || (AircraftCandidate.IsInState('Dying'))
+        {
+            continue;
+        }
+
+        // Skip teammates in team games.
+        if (WorldInfo.Game.bTeamGame && (Instigator.GetTeamNum() == AircraftCandidate.GetTeamNum()))
+        {
+            continue;
+        }
+
+        if (LastLockCandidate != AircraftCandidate)
+        {
+            LastLockCandidate = AircraftCandidate;
+            LastLockStartTime = WorldInfo.TimeSeconds;
+        }
+        else if (LastLockStartTime + MinTrackTime > WorldInfo.TimeSeconds)
+        {
+            LockTarget(AircraftCandidate);
+            break;
+        }
     }
 }
 
@@ -127,8 +173,9 @@ simulated function Projectile ProjectileFire()
 
 DefaultProperties
 {
-    MaxTargetDistance=25000 // 500m.
+    MaxTargetDistance=100000 // 2000m.
     LockTraceExtent=(X=50,Y=50,Z=50) // 2m * 2m * 2m extent box.
+    MinTrackTime=2.0
 
     WeaponContentClass(0)="HeloCombat.HCWeap_9K32Strela2_MANPADS_Content"
     WeaponProjectiles(0)=class'HCProjectile_Strela2'

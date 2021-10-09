@@ -1,7 +1,7 @@
 class HCHeatSeekingProjectile extends PG7VRocket;
 
 var float MaxAngleDelta;
-var ROVehicle LockedTarget;
+var Actor LockedTarget;
 
 simulated function ProcessBulletTouch(Actor Other, Vector HitLocation, Vector HitNormal, PrimitiveComponent OtherComp)
 {
@@ -43,31 +43,45 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistance, 
 {
     local vector Direction;
     local vector V;
-    local float D;
+    local vector HitLoc;
+    local vector HitNormal;
+    // local float D;
     local float Distance;
     local float Angle;
 
     Direction = Normal(Vector(Rotation));
-    D = -(Direction dot Location); // TODO: What the fuck is D? Some kind of "padding"?
+    // D = -(Direction dot Location); // TODO: What the fuck is D? Some kind of "padding"?
 
+    /*
     if ((Direction dot LockedTarget.Location + D) > 0.0)
     {
         // Candidate is in front semisphere of the missile.
+    */
         V = LockedTarget.Location - Location;
         Distance = VSize(V);
-        Angle = Acos(Direction dot Normal(V));
+        OutDistance = Distance;
 
-        /* NOTE: For choosing another target if current is "unreachable".
-         *       Not needed for our use case.
-        if (((Distance / Speed) / DeltaTime) * MaxAngleDelta >= Angle)
+        // Can't see target.
+        if (Trace(HitLoc, HitNormal, LockedTarget.Location, Location, True, vect(1,1,1)) != LockedTarget)
         {
+            OutAngle = 0;
+        }
+        else
+        {
+            Angle = Acos(Direction dot Normal(V));
             OutAngle = Angle;
         }
-        */
 
-        OutAngle = Angle;
-        OutDistance = Distance;
+        // NOTE: For choosing another target if current is "unreachable".
+        //       Not needed for our use case.
+        // if (((Distance / Speed) / DeltaTime) * MaxAngleDelta >= Angle)
+        // {
+        //     OutAngle = Angle;
+        // }
+
+    /*
     }
+    */
 }
 
 simulated function Tick(float DeltaTime)
@@ -98,10 +112,14 @@ simulated function Tick(float DeltaTime)
 
     Speed = VSize(Velocity);
     SetRotation (rotator(Velocity));
+
+    if (Distance <= (DamageRadius / 3))
+    {
+        Explode(Location, -Normal(LockedTarget.Location - Location));
+    }
 }
 
 DefaultProperties
 {
-    MaxAngleDelta=0.0050
-    InitialAccelerationTime=1.5
+    MaxAngleDelta=0.0080
 }
