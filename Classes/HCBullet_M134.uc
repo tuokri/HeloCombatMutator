@@ -14,4 +14,3 @@ simulated function ProcessBulletTouch(Actor Other, Vector HitLocation, Vector Hi
         super.ProcessBulletTouch(Other, HitLocation, HitNormal, OtherComp);
     }
 }
-
