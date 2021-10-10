@@ -54,7 +54,7 @@ simulated function LockTarget(Actor Target)
         PlayerController(Instigator.Controller).ClientMessage("Locked Target = " $ Target);
     }
 
-    `log("LockTarget(): Target = " $ Target,, 'StrelaDebug');
+    // `log("LockTarget(): Target = " $ Target,, 'StrelaDebug');
 
     LastLockedTarget = Target;
     ServerLockTarget(Target);
@@ -78,7 +78,7 @@ simulated function TryLock()
     Start = GetPhysicalFireStartLoc();
     End = Start + GetAdjustedAimVector(Start, True) * MaxTargetDistance;
 
-    DrawDebugLine(Start, End, 255, 15, 15, False);
+    // DrawDebugLine(Start, End, 255, 15, 15, False);
 
     ForEach TraceActors(class'Vehicle', VehicleCandidate, HitLoc, HitNorm, End, Start, LockTraceExtent)
     {
@@ -175,7 +175,7 @@ DefaultProperties
 {
     MaxTargetDistance=100000 // 2000m.
     LockTraceExtent=(X=50,Y=50,Z=50) // 2m * 2m * 2m extent box.
-    MinTrackTime=2.0
+    MinTrackTime=5.0 // Seconds.
 
     WeaponContentClass(0)="HeloCombat.HCWeap_9K32Strela2_MANPADS_Content"
     WeaponProjectiles(0)=class'HCProjectile_Strela2'
