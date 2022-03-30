@@ -137,12 +137,71 @@ state PlayerDriving
     }
 }
 
+exec function DrawHeloCrosshair(bool bDraw)
+{
+    if (ROVehicleHelicopter(Pawn) != None && HCHUD(MyROHUD) != None)
+    {
+        HCHUD(MyROHUD).HelicopterCrosshairWidget.bEnabled = bDraw;
+    }
+}
+
+exec function Camera(name NewMode)
+{
+    ServerCamera(NewMode);
+}
+
+reliable server function ServerCamera(name NewMode)
+{
+    if (NewMode == '1st')
+    {
+        NewMode = 'FirstPerson';
+    }
+    else if (NewMode == '3rd')
+    {
+        NewMode = 'ThirdPerson';
+    }
+    else
+    {
+        NewMode = '';
+    }
+    /*
+    else if (NewMode == 'free')
+    {
+        NewMode = 'FreeCam';
+    }
+    else if (NewMode == 'fixed')
+    {
+        NewMode = 'Fixed';
+    }
+    */
+
+    if (NewMode != '')
+    {
+        SetCameraMode(NewMode);
+    }
+}
+
+simulated exec function GiveStrela()
+{
+    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor())
+    {
+        ROPawn(Pawn).LoadAndCreateInventory("HeloCombat.HCWeap_9K32Strela2_MANPADS_Content");
+    }
+}
+
 exec function ForceGunshipOrbit()
 {
-//  if( WorldInfo.NetMode == NM_Standalone )
+    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor())
+    {
         DoGunshipTestOrbit();
-//  else
-//      ClientMessage("I disabled it for online, cheater. Ha!");
+    }
+    /*
+    else
+    {
+        Pawn.TakeDamage();
+        PlayerCamera.PlayCameraShake(Shake);
+    }
+    */
 }
 
 reliable private server function DoGunshipTestOrbit()
