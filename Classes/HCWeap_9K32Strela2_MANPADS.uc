@@ -15,6 +15,7 @@ var Actor LastLockedTarget;
 
 simulated state Active
 {
+    // TODO: This resets lock too early... Need to reset it on ADS or reload.
     simulated function BeginState(Name PreviousStateName)
     {
         super.BeginState(PreviousStateName);
@@ -167,6 +168,8 @@ simulated function Projectile ProjectileFire()
             }
         }
     }
+
+    // PlayerController(Instigator.Controller).SetViewTarget(SpawnedProjectile);
 
     return SpawnedProjectile;
 }

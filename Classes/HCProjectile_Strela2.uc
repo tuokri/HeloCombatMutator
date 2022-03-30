@@ -15,4 +15,10 @@ DefaultProperties
     ImpactDamage=1000
     DamageRadius=800
     PenetrationDamageRadius=1000
+
+    ProjFlightTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_Flight'
+    ProjExplosionTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_Explosion'
+
+    // AmbientSound=AkEvent'WW_CMD_AntiAir.Play_CMD_AntiAir_Launch'
+    // ExplosionSound=AkEvent'WW_CMD_AntiAir.Play_EXP_SAM_Explode'
 }

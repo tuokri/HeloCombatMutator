@@ -23,8 +23,8 @@ DefaultProperties
     BackBlastDuration=3.5
     BackBlastLightClass=none //class'ROGame.RORifleMuzzleFlashLight'
 
-    WeaponClass=class'ROWeap_RPG7_RocketLauncher'
-
+    WeaponClass=class'HCWeap_9K32Strela2_MANPADS'
+´
     bVisibleProj=true
     WeaponProjBone=Warhead
 
