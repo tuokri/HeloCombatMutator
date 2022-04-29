@@ -4,7 +4,6 @@ class SkelControl_Clock extends SkelControlSingleBone
 
 const STEP_60 = 1092.2666666666666666666666666667;
 const STEP_12 = 5461.3333333333333333333333333333;
-const MAXROT = 65536;
 
 enum EClockHandType
 {
@@ -50,13 +49,13 @@ event TickSkelControl(float DeltaTime, SkeletalMeshComponent SkelComp)
 function HandleSeconds(float DeltaTime)
 {
     BoneRotation.Yaw += DeltaTime * STEP_60;
-    `log("SecondsRot = " $ BoneRotation.Yaw);
+    // `log("SecondsRot = " $ BoneRotation.Yaw);
 }
 
 function HandleMinutes(float DeltaTime)
 {
     BoneRotation.Yaw += (DeltaTime / 60) * STEP_60;
-    `log("MinutesRot = " $ BoneRotation.Yaw);
+    // `log("MinutesRot = " $ BoneRotation.Yaw);
 }
 
 function HandleHours(float DeltaTime)
