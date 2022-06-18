@@ -122,11 +122,16 @@ function ROMutate(string MutateString, PlayerController Sender, out string Resul
             }
         }
     }
+    // romutate spawn2
+    if (Locs(Args[0]) == "spawn2")
+    {
+        SpawnTestActor(Sender, "nodynamicmaterial");
+    }
 
     super.ROMutate(MutateString, Sender, ResultMsg);
 }
 
-simulated function SpawnTestActor(PlayerController Player, string Type, MaterialInstanceConstant MaterialToApply)
+simulated function SpawnTestActor(PlayerController Player, string Type, optional MaterialInstanceConstant MaterialToApply)
 {
     local Actor SpawnedActor;
     local vector Loc;
@@ -144,6 +149,10 @@ simulated function SpawnTestActor(PlayerController Player, string Type, Material
     {
         SpawnedActor = Spawn(class'HCSkeletalTestActor', Self,, Loc, Player.Pawn.Rotation);
         HCSkeletalTestActor(SpawnedActor).SkeletalMeshComponent.SetMaterial(0, MaterialToApply);
+    }
+    else if (Type == "nodynamicmaterial")
+    {
+        SpawnedActor = Spawn(class'HCSkeletalTestActor2', Self,, Loc, Player.Pawn.Rotation);
     }
     else
     {

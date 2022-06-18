@@ -15,7 +15,6 @@ DefaultProperties
         bAcceptsDynamicLights=True
         CastShadow=True
     End Object
-
     bNoDelete=False
     LifeSpan=0
 }
