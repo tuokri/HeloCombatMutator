@@ -61,8 +61,16 @@ simulated function LockTarget(Actor Target)
     ServerLockTarget(Target);
 }
 
+// Set lock server side and validate client input.
 reliable server function ServerLockTarget(Actor Target)
 {
+    // TODO: make it realistic so that it can lock onto all heat sources?
+    if (!Target.IsA('ROSupportAircraft'))
+    {
+        Target = None;
+        return;
+    }
+
     LastLockedTarget = Target;
 }
 

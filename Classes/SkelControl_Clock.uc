@@ -27,11 +27,12 @@ function InitializeDateTime(const out DateTime DT)
     switch (ClockHandType)
     {
         case ECHT_Seconds:
-            HandleSeconds(InitDT.Sec);
+            HandleSeconds(InitDT.Sec + (InitDT.MSec * 1000));
             break;
         case ECHT_Minutes:
             AdjustedMinAsSecs = float(InitDT.Min) * 60.0;
             AdjustedMinAsSecs += InitDT.Sec;
+            AdjustedMinAsSecs += (InitDT.MSec * 1000);
             HandleMinutes(AdjustedMinAsSecs);
             break;
         case ECHT_Hours:
@@ -44,6 +45,7 @@ function InitializeDateTime(const out DateTime DT)
                 AdjustedHourAsSecs = float(InitDT.Hour);
             }
             AdjustedHourAsSecs += (InitDT.Min / 60.0);
+            AdjustedHourAsSecs += (InitDT.MSec * 1000);
             AdjustedHourAsSecs *= 3600;
             HandleHours(AdjustedHourAsSecs);
             break;

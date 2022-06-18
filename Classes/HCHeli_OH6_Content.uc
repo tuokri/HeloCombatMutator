@@ -7,7 +7,7 @@ DefaultProperties
 
     Begin Object Name=ROSVehicleMesh
         SkeletalMesh=SkeletalMesh'VH_VN_US_OH6.Mesh.US_OH6_Rig_Master'
-        Materials[4]=MaterialInstanceConstant'HC_VH_TintedHelicopters.Materials.HC_VH_US_OH6_Mic'
+        Materials[4]=Material'HC_VH_TintedHelicopters.Testing.CustomTestMat'
         LightingChannels=(Dynamic=TRUE,Unnamed_1=TRUE,bInitialized=TRUE)
         AnimTreeTemplate=AnimTree'VH_VN_US_OH6.Anim.AT_VH_OH6'
         PhysicsAsset=PhysicsAsset'VH_VN_US_OH6.Phys.US_OH6_Rig_Master_Physics'
