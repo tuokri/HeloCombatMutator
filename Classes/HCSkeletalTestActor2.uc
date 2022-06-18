@@ -23,6 +23,7 @@ DefaultProperties
         // Materials(0)='VNTE-MaterialContainer.TestMat'
         // Materials(1)='VNTE-MaterialContainer.TestMat1'
         // Materials(2)='VNTE-MaterialContainer.TestMatasdasdasd'
+        Materials.Empty
         LightEnvironment=MyLightEnvironment
         bCastDynamicShadow=True
         bAcceptsDynamicLights=True
@@ -35,6 +36,7 @@ DefaultProperties
         // MaterialMappings(2)=(TargetComp=SkeletalMeshComponent0,MaterialIndex=2,MaterialName="VNTE-MaterialContainer.TestMatasdasdasd")
     End Object
     CustomMaterialContainer=CustomMaterialContainer0
+    Components.Add(CustomMaterialContainer0)
 
     bNoDelete=False
     LifeSpan=0

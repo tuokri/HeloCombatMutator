@@ -34,6 +34,7 @@ function ModifyPlayer(Pawn Other)
 function NotifyLogin(Controller NewPlayer)
 {
     ClientPreloadLevels(LevelsToPreload);
+    ClientPreloadCustomMaterials();
     ClientSedHUD();
 
     super.NotifyLogin(NewPlayer);
@@ -65,6 +66,7 @@ reliable client function ClientSetPilot(Controller C)
     SetPilot(C);
 }
 
+// Preload level(s) that contain custom materials.
 function PreloadLevels(array<name> Levels)
 {
     local int Idx;
@@ -74,6 +76,53 @@ function PreloadLevels(array<name> Levels)
         `hclog("Levels[" $ Idx $ "]: " $ Levels[Idx]);
     }
     WorldInfo.PrepareMapChange(Levels);
+}
+
+// Preload the actual materials.
+function PreloadCustomMaterials()
+{
+    DelayedPreloadCustomMaterials();
+}
+
+function DelayedPreloadCustomMaterials()
+{
+    local Material Mat;
+    local ROMapInfo ROMI;
+    local Actor A;
+    local CustomMaterialContainer CMM;
+    local MaterialMapping MM;
+
+    // Wait until PrepareMapChange() finishes (it's async)...
+    if (WorldInfo.IsPreparingMapChange())
+    {
+        SetTimer(0.01, False, NameOf(DelayedPreloadCustomMaterials));
+    }
+    else
+    {
+        ROMI = ROMapInfo(WorldInfo.GetMapInfo());
+
+        // TODO:
+        // Yikes, triple nested loop... Try to find a better way of doing this.
+        // Pre-defined hard-coded list of materials to pre-load?
+        ForEach WorldInfo.AllActors(class'Actor', A)
+        {
+            ForEach A.ComponentList(class'CustomMaterialContainer', CMM)
+            {
+                `hclog("preloading materials for " $ A $ " " $ CMM);
+                ForEach CMM.MaterialMappings(MM)
+                {
+                    Mat = Material(DynamicLoadObject(MM.MaterialName, class'Material'));
+                    `hclog("preloaded " $ Mat);
+                    ROMI.SharedContentReferences.AddItem(Mat);
+                }
+            }
+        }
+    }
+}
+
+reliable client function ClientPreloadCustomMaterials()
+{
+    PreloadCustomMaterials();
 }
 
 reliable client function ClientPreloadLevels(array<name> Levels)
@@ -138,7 +187,10 @@ simulated function SpawnTestActor(PlayerController Player, string Type, optional
 
     Loc = Player.Pawn.Location + (Normal(vector(Player.Pawn.Rotation)) * 100);
     `hclog("spawning test actor at " $ Loc);
-    Player.ClientMessage("[HeloCombatMutator]: spawning test actor at: " $ Loc $ " with material: " $ MaterialToApply);
+    if (MaterialToApply != None)
+    {
+        Player.ClientMessage("[HeloCombatMutator]: spawning test actor at: " $ Loc $ " with material: " $ MaterialToApply);
+    }
 
     if (Type == "static")
     {

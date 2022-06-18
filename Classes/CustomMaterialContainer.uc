@@ -1,4 +1,4 @@
-class CustomMaterialContainer extends Object;
+class CustomMaterialContainer extends ActorComponent;
 
 struct MaterialMapping
 {
@@ -11,16 +11,17 @@ var array<MaterialMapping> MaterialMappings;
 
 simulated function ApplyMaterials()
 {
-    local MaterialMapping MP;
+    local MaterialMapping MM;
     local MaterialInstanceConstant MIC;
     local Material Mat;
 
-    ForEach MaterialMappings(MP)
+    ForEach MaterialMappings(MM)
     {
-        Mat = Material(DynamicLoadObject(MP.MaterialName, class'Material'));
+        Mat = Material(DynamicLoadObject(MM.MaterialName, class'Material'));
         MIC = new(self) class'MaterialInstanceConstant';
         MIC.SetParent(Mat);
-        MP.TargetComp.SetMaterial(MP.MaterialIndex, MIC);
+        `hclog("setting MIC: " $ MIC $ " on: " $ MM.TargetComp $ " index: " $ MM.MaterialIndex);
+        MM.TargetComp.SetMaterial(MM.MaterialIndex, MIC);
     }
 }
 
