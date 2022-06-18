@@ -9,6 +9,9 @@ struct MaterialMapping
 
 var array<MaterialMapping> MaterialMappings;
 
+// TODO: instead of calling DynamicLoadObject here, do the dynamic loading
+// at startup for all custom materials, then just fetch the reference to the
+// material here and apply it on the target mesh component.
 simulated function ApplyMaterials()
 {
     local MaterialMapping MM;
