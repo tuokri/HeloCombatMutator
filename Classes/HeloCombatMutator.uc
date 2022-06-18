@@ -103,7 +103,9 @@ function DelayedPreloadCustomMaterials()
 
         // TODO:
         // Yikes, triple nested loop... Try to find a better way of doing this.
-        // Pre-defined hard-coded list of materials to pre-load?
+        // Predefined hard-coded list of materials to preload?
+        // Also, this will not load materials for actors that are not
+        // present in the level at the time of this call.
         ForEach WorldInfo.AllActors(class'Actor', A)
         {
             ForEach A.ComponentList(class'CustomMaterialContainer', CMM)
