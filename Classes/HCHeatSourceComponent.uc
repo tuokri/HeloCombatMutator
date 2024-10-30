@@ -21,12 +21,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-class HCHWeap_UH1_Gunship_DoorMG_L extends ROHWeap_UH1_Gunship_DoorMG_L;
 
-DefaultProperties
-{
-    WeaponContentClass(0)="HeloCombat.HCHWeap_UH1_Gunship_DoorMG_L_Content"
-    VehicleClass=class'HCHeli_UH1H_Gunship'
-    WeaponProjectiles(0)=class'HCBullet_M60D'
-    MaxAmmoCount=4000
-}
+// TODO: component heat seeker projectiles to lock onto.
+// TODO: come up with a good way of simulating "directional heat"
+//       e.g., jet engines should be hotter from the rear, exhaust
+//       should be hotter than the side/front of the engine, etc.
+class HCHeatSourceComponent extends ActorComponent;

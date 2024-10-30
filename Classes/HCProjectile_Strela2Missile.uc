@@ -21,12 +21,30 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-class HCHWeap_UH1_Gunship_DoorMG_L extends ROHWeap_UH1_Gunship_DoorMG_L;
+
+// https://www.reddit.com/r/CombatFootage/comments/12ash8a/hamas_operatives_firing_strela2_manpads_at_an_iaf/
+// https://en.wikipedia.org/wiki/9K32_Strela-2
+class HCProjectile_Strela2Missile extends HCHeatSeekingProjectile;
 
 DefaultProperties
 {
-    WeaponContentClass(0)="HeloCombat.HCHWeap_UH1_Gunship_DoorMG_L_Content"
-    VehicleClass=class'HCHeli_UH1H_Gunship'
-    WeaponProjectiles(0)=class'HCBullet_M60D'
-    MaxAmmoCount=4000
+    FueledFlightTime=14
+    LifeSpan=17
+    RocketIgnitionTime=0.3
+    SpreadStartDelay=0
+    InitialAccelerationTime=2.0
+
+    Speed=1600 // 32 / m/s.
+    MaxSpeed=21500 // 430 m/s.
+
+    Damage=250
+    ImpactDamage=1000
+    DamageRadius=800
+    PenetrationDamageRadius=1000
+
+    ProjFlightTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_Flight'
+    ProjExplosionTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_Explosion'
+
+    // AmbientSound=AkEvent'WW_CMD_AntiAir.Play_CMD_AntiAir_Launch'
+    // ExplosionSound=AkEvent'WW_CMD_AntiAir.Play_EXP_SAM_Explode'
 }

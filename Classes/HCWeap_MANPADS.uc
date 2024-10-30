@@ -1,4 +1,27 @@
-class HCWeap_9K32Strela2_MANPADS extends ROWeap_RPG7_RocketLauncher;
+/*
+ * Copyright (c) 2021-2024 Tuomo Kriikkula <tuokri@tuta.io>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+class HCWeap_MANPADS extends ROWeap_RPG7_RocketLauncher;
 
 // How distant a target we can lock onto.
 var (HeatSeeker) float MaxTargetDistance;
@@ -6,12 +29,16 @@ var (HeatSeeker) float MaxTargetDistance;
 var (HeatSeeker) vector LockTraceExtent;
 // Override the projectile's MaxAngleDelta. For debug purposes only.
 var (HeatSeeker) float MaxAngleDeltaOverride;
-// Minimum time to track targer before locking.
+// Minimum time to track target before locking.
 var (HeatSeeker) float MinTrackTime;
+// Which classes the weapon is able to lock onto.
+var (HeatSeeker) array< class<Object> > TrackableActorClasses;
+
+// TODO: lock target replication needs double-checking!
 
 var float LastLockStartTime;
-var Actor LastLockCandidate;
-var Actor LastLockedTarget;
+var Actor LastLockCandidate; // TODO: this can't be an actor?!
+var Actor LastLockedTarget; // TODO: this can't be an actor?!
 
 simulated state Active
 {
@@ -55,7 +82,7 @@ simulated function LockTarget(Actor Target)
         PlayerController(Instigator.Controller).ClientMessage("Locked Target = " $ Target);
     }
 
-    // `log("LockTarget(): Target = " $ Target,, 'StrelaDebug');
+    // `hclog("LockTarget(): Target = " $ Target,, 'StrelaDebug');
 
     LastLockedTarget = Target;
     ServerLockTarget(Target);
@@ -64,14 +91,20 @@ simulated function LockTarget(Actor Target)
 // Set lock server side and validate client input.
 reliable server function ServerLockTarget(Actor Target)
 {
-    // TODO: make it realistic so that it can lock onto all heat sources?
-    if (!Target.IsA('ROSupportAircraft'))
+    local int i;
+
+    `hcdebug("Target=" $ Target $ ", Target.Class.Name=" $ Target.Class.Name);
+
+    for (i = 0; i < TrackableActorClasses.Length; ++i)
     {
-        Target = None;
-        return;
+        if (Target.IsA(TrackableActorClasses[i].Class.Name))
+        {
+            LastLockedTarget = Target;
+            return;
+        }
     }
 
-    LastLockedTarget = Target;
+    LastLockedTarget = None;
 }
 
 // TODO: remove duplicates.
@@ -85,27 +118,30 @@ simulated function TryLock()
     local vector Start;
 
     Start = GetPhysicalFireStartLoc();
+    // TODO: why adjusted aim vector????
     End = Start + GetAdjustedAimVector(Start, True) * MaxTargetDistance;
 
     // DrawDebugLine(Start, End, 255, 15, 15, False);
 
+    // TODO: think about this logic!
+    // TODO: when tracing actors, check if the actor has a heat source component!
     ForEach TraceActors(class'Vehicle', VehicleCandidate, HitLoc, HitNorm, End, Start, LockTraceExtent)
     {
-        `log("TryLock(): VehicleCandidate = " $ VehicleCandidate,, 'StrelaDebug');
+        `hclog("TryLock(): VehicleCandidate = " $ VehicleCandidate,, 'StrelaDebug');
 
         // Skip myself.
         if (VehicleCandidate == GetTraceOwner()) // || (VehicleCandidate.IsInState('Dying'))
         {
-            // `log("TryLock(): VehicleCandidate is trace owner ",, 'StrelaDebug');
+            // `hclog("TryLock(): VehicleCandidate is trace owner ",, 'StrelaDebug');
             continue;
         }
 
         // Skip teammates in team games.
-        if (WorldInfo.Game.bTeamGame && (Instigator.GetTeamNum() == VehicleCandidate.GetTeamNum()))
-        {
-            // `log("TryLock(): VehicleCandidate is teammate ",, 'StrelaDebug');
-            continue;
-        }
+        // if (WorldInfo.Game.bTeamGame && (Instigator.GetTeamNum() == VehicleCandidate.GetTeamNum()))
+        // {
+        //     // `hclog("TryLock(): VehicleCandidate is teammate ",, 'StrelaDebug');
+        //     continue;
+        // }
 
         if (LastLockCandidate != VehicleCandidate)
         {
@@ -126,7 +162,7 @@ simulated function TryLock()
 
     ForEach TraceActors(class'ROSupportAircraft', AircraftCandidate, HitLoc, HitNorm, End, Start, LockTraceExtent)
     {
-        `log("TryLock(): AircraftCandidate = " $ AircraftCandidate,, 'StrelaDebug');
+        `hclog("TryLock(): AircraftCandidate = " $ AircraftCandidate,, 'StrelaDebug');
 
         // Skip myself.
         if (AircraftCandidate == GetTraceOwner()) // || (AircraftCandidate.IsInState('Dying'))
@@ -135,10 +171,10 @@ simulated function TryLock()
         }
 
         // Skip teammates in team games.
-        if (WorldInfo.Game.bTeamGame && (Instigator.GetTeamNum() == AircraftCandidate.GetTeamNum()))
-        {
-            continue;
-        }
+        // if (WorldInfo.Game.bTeamGame && (Instigator.GetTeamNum() == AircraftCandidate.GetTeamNum()))
+        // {
+        //     continue;
+        // }
 
         if (LastLockCandidate != AircraftCandidate)
         {
@@ -160,12 +196,12 @@ simulated function Projectile ProjectileFire()
 
     SpawnedProjectile = super.ProjectileFire();
 
-    // `log("ProjectileFire(): Projectile = " $ SpawnedProjectile $ ", LastLockedTarget = " $ LastLockedTarget,, 'StrelaDebug');
+    // `hclog("ProjectileFire(): Projectile = " $ SpawnedProjectile $ ", LastLockedTarget = " $ LastLockedTarget,, 'StrelaDebug');
 
     if (SpawnedProjectile != None && LastLockedTarget != None)
     {
         HeatSeeker = HCHeatSeekingProjectile(SpawnedProjectile);
-        // `log("ProjectileFire(): HeatSeeker = " $ HeatSeeker,, 'StrelaDebug');
+        // `hclog("ProjectileFire(): HeatSeeker = " $ HeatSeeker,, 'StrelaDebug');
 
         if (HeatSeeker != None)
         {
@@ -188,9 +224,6 @@ DefaultProperties
     LockTraceExtent=(X=50,Y=50,Z=50) // 2m * 2m * 2m extent box.
     MinTrackTime=5.0 // Seconds.
 
-    WeaponContentClass(0)="HeloCombat.HCWeap_9K32Strela2_MANPADS_Content"
-    WeaponProjectiles(0)=class'HCProjectile_Strela2'
-
-    PreFireTraceLength=0
-    MaxAngleDeltaOverride=0
+    // TODO: This shouldn't be here!
+    TrackableActorClasses(0)=class'HCHeatSourceComponent'
 }

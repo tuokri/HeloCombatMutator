@@ -1,8 +1,27 @@
-// `define hclog(msg, cond, tag) `log(self.class.name $ "::" $ GetFuncName() $ "(): " $ `msg, `cond, 'HeloCombatMutator-' $ `tag)
-// `define hclog(msg, cond, tag) \
-//     log(self.class.name $ "::" $ GetFuncName() $ "(): " $ `msg, `cond, name("HeloCombatMutator-" $ string(`tag)))
+`define HC_VERSION_STRING "1.0.0"
+
+`define HC_DEBUG 1
 
 `define hclog(msg, cond, tag) \
     `log(self.class.name $ "::" $ GetFuncName() $ "(): " $ `msg, \
     `cond, \
     `if(`tag), name("HeloCombatMutator-" $ string(`tag))`else'HeloCombatMutator'`endif)
+
+`define hcslog(msg, cond, tag) \
+    `log(default.class.name $ "::" $ GetFuncName() $ "(): " $ `msg, \
+    `cond, \
+    `if(`tag) name("HeloCombatMutator-" $ string(`tag)) `else 'HeloCombatMutator' `endif)
+
+`define hcwarn(msg, cond) `hclog(`msg, `cond, 'WARNING')
+`define hcerror(msg, cond) `hclog(`msg, `cond, 'ERROR')
+
+`define hcswarn(msg, cond) `hcslog(`msg, `cond, 'WARNING')
+`define hcserror(msg, cond) `hcslog(`msg, `cond, 'ERROR')
+
+`if(`isdefined(HC_DEBUG))
+    `define hcdebug(msg, cond) `hclog(`msg, `cond, 'DEBUG')
+    `define hcsdebug(msg, cond) `hcslog(`msg, `cond, 'DEBUG')
+`else
+    `define hcdebug(msg, cond, tag)
+    `define hcsdebug(msg, cond, tag)
+`endif

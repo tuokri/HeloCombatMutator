@@ -1,3 +1,26 @@
+/*
+ * Copyright (c) 2021-2024 Tuomo Kriikkula <tuokri@tuta.io>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 class HCPlayerController extends ROPlayerController
     config(Mutator_HeloCombat_Client);
 
@@ -24,7 +47,17 @@ function PawnDied(Pawn P)
 
 function HeloCombatMutator GetHCM()
 {
-    return HeloCombatMutator(WorldInfo.Game.BaseMutator);
+    local HeloCombatMutator HCM;
+    local Mutator Mut;
+
+    Mut = WorldInfo.Game.BaseMutator;
+    while (HCM == None && Mut != None)
+    {
+        HCM = HeloCombatMutator(Mut);
+        Mut = Mut.NextMutator;
+    }
+
+    return HCM;
 }
 
 reliable client event ReceiveLocalizedMessage(class<LocalMessage> Message, optional int Switch,
@@ -47,6 +80,7 @@ reliable client event ReceiveLocalizedMessage(class<LocalMessage> Message, optio
 }
 
 // TODO: Do a seat ejection thingy.
+// TODO: Parachutes!
 state PlayerDriving
 {
     unreliable protected server function ServerUse()
@@ -61,9 +95,9 @@ state PlayerDriving
 
         GetPlayerViewPoint(ViewLocation, ViewRotation);
 
-        if( ROVEH != none )
+        if (ROVEH != none)
         {
-            if( ROVEH.bInfantryCanUse )
+            if (ROVEH.bInfantryCanUse)
             {
                 // ROVH = ROVehicleHelicopter(Pawn);
                 //ROVEH.DriverLeave(false);
@@ -88,7 +122,7 @@ state PlayerDriving
                 // Safe to exit
 
                 ClientStartExitVehicleFadeOut();
-                SetTimer(0.25, false, 'ExitVehicle');
+                SetTimer(0.25, false, NameOf(ExitVehicle));
                 return;
             }
         }
@@ -96,7 +130,7 @@ state PlayerDriving
         {
             ROWP = ROWeaponPawn(Pawn);
 
-            if( ROWP != none && ROWP.MyVehicle != none && ROWP.MyVehicle.bInfantryCanUse )
+            if (ROWP != none && ROWP.MyVehicle != none && ROWP.MyVehicle.bInfantryCanUse)
             {
                 // ROVH = ROVehicleHelicopter(ROWP.MyVehicle);
 
@@ -128,7 +162,7 @@ state PlayerDriving
 
                 //ROWP.DriverLeave(false);
                 ClientStartExitVehicleFadeOut();
-                SetTimer(0.25, false, 'ExitVehicle');
+                SetTimer(0.25, false, NameOf(ExitVehicle));
                 return;
             }
         }
@@ -160,11 +194,6 @@ reliable server function ServerCamera(name NewMode)
     {
         NewMode = 'ThirdPerson';
     }
-    else
-    {
-        NewMode = '';
-    }
-    /*
     else if (NewMode == 'free')
     {
         NewMode = 'FreeCam';
@@ -173,7 +202,10 @@ reliable server function ServerCamera(name NewMode)
     {
         NewMode = 'Fixed';
     }
-    */
+    else
+    {
+        NewMode = '';
+    }
 
     if (NewMode != '')
     {
@@ -183,15 +215,23 @@ reliable server function ServerCamera(name NewMode)
 
 simulated exec function GiveStrela()
 {
-    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor())
+    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor()
+        || class'HeloCombatMutator'.static.IsDebugBuild())
     {
-        ROPawn(Pawn).LoadAndCreateInventory("HeloCombat.HCWeap_9K32Strela2_MANPADS_Content");
+        ROPawn(Pawn).LoadAndCreateInventory("HeloCombat.HCWeap_MANPADS_9K32Strela2_Content");
+        ServerGiveStrela(ROPawn(Pawn));
     }
+}
+
+reliable private server function ServerGiveStrela(ROPawn ROP)
+{
+    ROP.LoadAndCreateInventory("HeloCombat.HCWeap_MANPADS_9K32Strela2_Content");
 }
 
 exec function ForceGunshipOrbit()
 {
-    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor())
+    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor()
+        || class'HeloCombatMutator'.static.IsDebugBuild())
     {
         DoGunshipTestOrbit();
     }
@@ -236,7 +276,7 @@ reliable private server function DoGunshipTestOrbit()
 
     if ( Aircraft == none )
     {
-        `log("Error Spawning Support Aircraft");
+        `hclog("Error Spawning Support Aircraft");
     }
     else
     {

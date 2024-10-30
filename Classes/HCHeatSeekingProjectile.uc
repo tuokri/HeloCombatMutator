@@ -1,10 +1,49 @@
+/*
+ * Copyright (c) 2021-2024 Tuomo Kriikkula <tuokri@tuta.io>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+// Custom projectile class that attempts to guide itself to a locked target.
+// TODO: fix rotation calcs (use quaternions)!
 class HCHeatSeekingProjectile extends PG7VRocket;
 
-var float DamageRadiusSq;
-var float MaxAngleDelta;
-var float MaxAngleDeltaUnrRot;
-var Actor LockedTarget;
-var bool bExploded;
+// Cached squared explosion damage radius.
+var() float DamageRadiusSq;
+// TODO: double-check this!
+var() float MaxAngleDelta;
+// TODO: double-check this!
+var() float MaxAngleDeltaUnrRot;
+// The actor this projectile is currently tracking.
+var() Actor LockedTarget;
+// Flag set to True on explosion to stop tracking calculations.
+var() bool bExploded;
+// Flag to control when missile can begin performing tracking calculations.
+var() bool bCanUpdateTracking;
+// Scale the force by which the missile is able to correct
+// its trajectory. I.e. the closer the missile is to max speed,
+// the faster it is able to turn.
+var() float TrackingForceScaler;
+// How many degrees per second the projectile can track (at max speed).
+var() float TrackingMaxDegPerSecond;
 
 event PreBeginPlay()
 {
@@ -31,23 +70,15 @@ simulated function ProcessBulletTouch(Actor Other, Vector HitLocation, Vector Hi
 
 function StartRocketEngine()
 {
-    if( Speed < MaxSpeed )
+    bCanUpdateTracking = True;
+    TrackingForceScaler = 0.0;
+
+    if (Speed < MaxSpeed)
     {
         Acceleration += Normal(Velocity) * (MaxSpeed - Speed) / InitialAccelerationTime;
     }
-    /*
 
-    if(SpreadStartDelay > 0)
-    {
-        SetTimer(SpreadStartDelay, false, 'StartFlightDeviation');
-    }
-    else
-    {
-        StartFlightDeviation();
-    }
-    */
-
-    SetTimer(FueledFlightTime, false, 'CutRocketEngine');
+    SetTimer(FueledFlightTime, false, NameOf(CutRocketEngine));
 }
 
 simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq, out float OutAngle, out vector OutSelfToTarget)
@@ -89,6 +120,7 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
 
         // NOTE: For choosing another target if current is "unreachable".
         //       Not needed for our use case.
+        // TODO: Actually, maybe this is needed after all! Flares?
         // if (((Distance / Speed) / DeltaTime) * MaxAngleDelta >= Angle)
         // {
         //     OutAngle = Angle;
@@ -127,6 +159,12 @@ simulated function Tick(float DeltaTime)
         return;
     }
 
+    if (!bCanUpdateTracking)
+    {
+        return;
+    }
+
+    TrackingForceScaler = FClamp((Speed / MaxSpeed), 0.0, 1.0);
     UpdateTrackingParams(DeltaTime, DistanceSq, Angle, SelfToTarget);
 
     if (bTrueBallistics || LockedTarget == None || Angle == 0)
@@ -193,4 +231,6 @@ DefaultProperties
 {
     MaxAngleDelta=0.0120
     bRotationFollowsVelocity=True
+    bCanUpdateTracking=False
+    TrackingForceScaler=0.0
 }

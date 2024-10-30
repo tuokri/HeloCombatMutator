@@ -21,25 +21,28 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-class HCItem_PlaceableRocketHMG_Content extends ROItem_PlaceableHMG_Content;
+class HCWeap_MANPADS_9K32Strela2_Content extends HCWeap_MANPADS_9K32Strela2;
 
 DefaultProperties
 {
+    // Arms.
+    ArmsAnimSet=AnimSet'WP_VN_VC_RPG7.Animation.VC_RPG7hands'
+
+    // Weapon SkeletalMesh.
     Begin Object Name=FirstPersonMesh
         DepthPriorityGroup=SDPG_Foreground
-        SkeletalMesh=SkeletalMesh'WP_VN_VC_DshK_Portable.Mesh.WP_VN_VC_DshK_Portable'
-        PhysicsAsset=PhysicsAsset'WP_VN_VC_DshK_HMG.Phy.VC_DshK_Physics'
-        AnimSets(0)=AnimSet'WP_VN_VC_DshK_Portable.Animation.WP_DshKhands_Portable'
-        AnimTreeTemplate=AnimTree'WP_VN_VC_DshK_Portable.Animation.DshKPortableAnimTree'
+        SkeletalMesh=SkeletalMesh'WP_VN_VC_RPG7.Mesh.VC_RPG7'
+        PhysicsAsset=PhysicsAsset'WP_VN_VC_RPG7.Phys.VC_RPG7_Physics'
+        AnimSets(0)=AnimSet'WP_VN_VC_RPG7.Animation.VC_RPG7hands'
+        AnimTreeTemplate=AnimTree'WP_VN_VC_RPG7.Animation.VC_RPG7_Tree'
         Scale=1.0
         FOV=70
     End Object
 
-    // Pickup staticmesh
+    // Pickup staticmesh.
     Begin Object Name=PickupMesh
-        SkeletalMesh=SkeletalMesh'WP_VN_3rd_Master.Mesh.DshK_PickUp_3rd_Master'
-        PhysicsAsset=PhysicsAsset'WP_VN_3rd_Master.Phy.DshK_Portable_3rd_Master_Physics'
-        //AnimTreeTemplate=AnimTree'WP_VN_3rd_Master.AnimTree.Tripwire_Trap_3rd_Tree'
+        SkeletalMesh=SkeletalMesh'WP_VN_3rd_Master.Mesh.RPG7_3rd_Master'
+        PhysicsAsset=PhysicsAsset'WP_VN_3rd_Master.Phy.RPG7_3rd_Master_Physics'
         CollideActors=true
         BlockActors=true
         BlockZeroExtent=true
@@ -54,10 +57,5 @@ DefaultProperties
         bSyncActorLocationToRootRigidBody=true
     End Object
 
-    AttachmentClass=class'ROGameContent.ROItemAttach_PlaceableHMG'
-
-    // Arms
-    ArmsAnimSet=AnimSet'WP_VN_VC_DshK_Portable.Animation.WP_DshKhands_Portable'
-
-    HMGClass=class'HeloCombat.HCTurret_RocketDShK_HMG_Destroyable'
+    AttachmentClass=class'HCWeapAttach_MANPADS_9K32Strela2'
 }

@@ -21,12 +21,20 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-class HCHWeap_UH1_Gunship_DoorMG_L extends ROHWeap_UH1_Gunship_DoorMG_L;
+class HCWeap_MANPADS_9K32Strela2 extends HCWeap_MANPADS;
 
 DefaultProperties
 {
-    WeaponContentClass(0)="HeloCombat.HCHWeap_UH1_Gunship_DoorMG_L_Content"
-    VehicleClass=class'HCHeli_UH1H_Gunship'
-    WeaponProjectiles(0)=class'HCBullet_M60D'
-    MaxAmmoCount=4000
+    MaxTargetDistance=100000 // 2000m.
+    LockTraceExtent=(X=50,Y=50,Z=50) // 2m * 2m * 2m extent box.
+    MinTrackTime=5.0 // Seconds.
+
+    TrackableActorClasses.Add(class'Vehicle')
+    TrackableActorClasses.Add(class'ROSupportAircraft')
+
+    WeaponContentClass(0)="HeloCombat.HCWeap_MANPADS_9K32Strela2_Content"
+    WeaponProjectiles(0)=class'HCProjectile_Strela2Missile'
+
+    PreFireTraceLength=0
+    MaxAngleDeltaOverride=0
 }
