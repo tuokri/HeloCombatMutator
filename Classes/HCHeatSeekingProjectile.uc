@@ -24,6 +24,9 @@
 
 // Custom projectile class that attempts to guide itself to a locked target.
 // TODO: fix rotation calcs (use quaternions)!
+// https://en.wikipedia.org/wiki/Proportional_navigation
+// Currently uses proportional navigation.
+// Assumes the seeker head is able to rotate.
 class HCHeatSeekingProjectile extends PG7VRocket;
 
 // Cached squared explosion damage radius.
@@ -44,6 +47,11 @@ var() bool bCanUpdateTracking;
 var() float TrackingForceScaler;
 // How many degrees per second the projectile can track (at max speed).
 var() float TrackingMaxDegPerSecond;
+// Seeker head field of view in degrees.
+var() float SeekerDegFOV;
+// Maximum seeker head bearing angle.
+var() float SeekerMaxBearingAngleDeg;
+// TODO: HOW FAST CAN THE MISSILE TURN?
 
 event PreBeginPlay()
 {
@@ -221,6 +229,7 @@ simulated function Tick(float DeltaTime)
     }
 
     // Tolerance for near misses.
+    // TODO: don't check this like this! Check for collision OR near collision!
     if (DistanceSq <= (DamageRadiusSq * 0.25))
     {
         Explode(Location, Normal(Velocity));
