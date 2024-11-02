@@ -24,6 +24,7 @@
 
 // https://www.reddit.com/r/CombatFootage/comments/12ash8a/hamas_operatives_firing_strela2_manpads_at_an_iaf/
 // https://en.wikipedia.org/wiki/9K32_Strela-2
+// Heat seeking 9K32 missile for Strela-2 system.
 class HCProjectile_Strela2Missile extends HCHeatSeekingProjectile;
 
 DefaultProperties
@@ -33,6 +34,7 @@ DefaultProperties
     RocketIgnitionTime=0.3
     SpreadStartDelay=0
     InitialAccelerationTime=2.0
+    GradualSpreadMultiplier=0
 
     Speed=1600 // 32 / m/s.
     MaxSpeed=21500 // 430 m/s.

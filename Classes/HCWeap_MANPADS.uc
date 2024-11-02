@@ -23,6 +23,9 @@
  */
 class HCWeap_MANPADS extends ROWeap_RPG7_RocketLauncher;
 
+// Delay between lock attempts. Simulates a sort of processing
+// delay in the weapon's seeker computer.
+var (HeatSeeker) float LockAttemptRetryDelaySeconds;
 // How distant a target we can lock onto.
 var (HeatSeeker) float MaxTargetDistance;
 // Trace box extent for checking locking candidate.
@@ -67,7 +70,11 @@ simulated state Active
     {
         Global.Tick(DeltaTime);
 
-        if (bUsingSights && LastLockedTarget == None && WorldInfo.NetMode != NM_DedicatedServer)
+        if (bUsingSights
+            && LastLockedTarget == None
+            && WorldInfo.NetMode != NM_DedicatedServer
+            && WorldInfo.TimeSeconds > (LastLockStartTime + LockAttemptRetryDelaySeconds)
+        )
         {
             TryLock();
         }
@@ -79,35 +86,44 @@ simulated function LockTarget(Actor Target)
     // TODO: Buzzer and indicator light.
     if (PlayerController(Instigator.Controller) != None)
     {
-        PlayerController(Instigator.Controller).ClientMessage("Locked Target = " $ Target);
+        PlayerController(Instigator.Controller).ClientMessage("Locked Target=" $ Target);
     }
 
-    // `hclog("LockTarget(): Target = " $ Target,, 'StrelaDebug');
+    `hcdebug("Target=" $ Target);
 
     LastLockedTarget = Target;
     ServerLockTarget(Target);
 }
 
 // Set lock server side and validate client input.
+// TODO: do we need to run this on standalone/editor builds?
 reliable server function ServerLockTarget(Actor Target)
 {
     local int i;
 
     `hcdebug("Target=" $ Target $ ", Target.Class.Name=" $ Target.Class.Name);
 
+    // TODO: Do a quick trace here to verify that lock is within allowed parameters!
+    // - Distance check.
+    // - LoS check?
+
     for (i = 0; i < TrackableActorClasses.Length; ++i)
     {
-        if (Target.IsA(TrackableActorClasses[i].Class.Name))
+        if (Target.IsA(TrackableActorClasses[i].Class.Name)
+            || ClassIsChildOf(Target.Class, TrackableActorClasses[i])
+        )
         {
             LastLockedTarget = Target;
             return;
         }
     }
 
+    `hcdebug("Target=" $ Target @ "was not a valid lock target!");
     LastLockedTarget = None;
 }
 
 // TODO: remove duplicates.
+// TODO: check for allowed trackable classes here!
 simulated function TryLock()
 {
     local Vehicle VehicleCandidate;
@@ -127,7 +143,7 @@ simulated function TryLock()
     // TODO: when tracing actors, check if the actor has a heat source component!
     ForEach TraceActors(class'Vehicle', VehicleCandidate, HitLoc, HitNorm, End, Start, LockTraceExtent)
     {
-        `hclog("TryLock(): VehicleCandidate = " $ VehicleCandidate,, 'StrelaDebug');
+        `hclog("VehicleCandidate=" $ VehicleCandidate);
 
         // Skip myself.
         if (VehicleCandidate == GetTraceOwner()) // || (VehicleCandidate.IsInState('Dying'))
@@ -162,7 +178,7 @@ simulated function TryLock()
 
     ForEach TraceActors(class'ROSupportAircraft', AircraftCandidate, HitLoc, HitNorm, End, Start, LockTraceExtent)
     {
-        `hclog("TryLock(): AircraftCandidate = " $ AircraftCandidate,, 'StrelaDebug');
+        `hclog("AircraftCandidate=" $ AircraftCandidate);
 
         // Skip myself.
         if (AircraftCandidate == GetTraceOwner()) // || (AircraftCandidate.IsInState('Dying'))
@@ -223,6 +239,7 @@ DefaultProperties
     MaxTargetDistance=100000 // 2000m.
     LockTraceExtent=(X=50,Y=50,Z=50) // 2m * 2m * 2m extent box.
     MinTrackTime=5.0 // Seconds.
+    LockAttemptRetryDelaySeconds=0.25
 
     // TODO: This shouldn't be here!
     TrackableActorClasses(0)=class'HCHeatSourceComponent'
