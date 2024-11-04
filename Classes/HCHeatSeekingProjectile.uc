@@ -205,6 +205,10 @@ simulated function Tick(float DeltaTime)
     local rotator LerpedRot;
     local vector SelfToTarget;
 
+    `hclog("Acceleration=" $ Acceleration
+        $ ", AccelG=" $ class'ROVehicleHelicopter'.const.ACCEL_G / VSize(Acceleration)
+    );
+
     super.Tick(DeltaTime);
 
     ForEach LocalPlayerControllers(class'PlayerController', PC)

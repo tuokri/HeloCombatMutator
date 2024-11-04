@@ -70,6 +70,16 @@ simulated state Active
     {
         Global.Tick(DeltaTime);
 
+        // TODO: allow some error here (or in TryLock, actually)!
+        // - Missile seeker head has a FoV, allow a small error here for
+        //   game play purposes.
+        // - Missile seeker head will turn and follow the heat source, given
+        //   it's first able to find one with it's limited FoV.
+        // So in essence:
+        // - When finding target, use the small LoS, give it a short min. time
+        //   to hold on target to acquire initial lock. After that, the seeker head
+        //   will follow the heat source. Now wait the minimum lock time seconds to
+        //   finally allow firing.
         if (bUsingSights
             && LastLockedTarget == None
             && WorldInfo.NetMode != NM_DedicatedServer
