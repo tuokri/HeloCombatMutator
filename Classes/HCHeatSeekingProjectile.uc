@@ -25,10 +25,13 @@
 // Custom projectile class that attempts to guide itself to a locked target.
 // TODO: fix rotation calcs (use quaternions)!
 // https://en.wikipedia.org/wiki/Proportional_navigation
+// https://www.ijser.org/researchpaper/Performance-Evaluation-of-Proportional-Navigation-Guidance-for-Low-Maneuvering-Targets.pdf
 // https://eprints.ugd.edu.mk/7501/2/MK-CN-TR-002_GELEV%20-%20XU%20et%20al_FuzzyLogic%20in%20Firecontrol%20for%20AirDefence-koregirano27%255B1%255D.03.2007.pdf
 // Currently uses proportional navigation.
 // Assumes the seeker head is able to rotate.
 class HCHeatSeekingProjectile extends PG7VRocket;
+
+// TODO: MAYBE CHANGE ALL UNITS TO RADS OR UNRROTS?
 
 // Cached squared explosion damage radius.
 var() float DamageRadiusSq;
@@ -45,15 +48,23 @@ var() bool bCanUpdateTracking;
 // Scale the force by which the missile is able to correct
 // its trajectory. I.e. the closer the missile is to max speed,
 // the faster it is able to turn.
+// TODO: maybe combine this with maximum turn G force?
 var() float TrackingForceScaler;
-// How many degrees per second the projectile can track (at max speed).
+// How many degrees per second the projectile can track.
+// Essentially how fast the seeker head can turn on its gimbal.
 var() float TrackingMaxDegPerSecond;
-// Seeker head field of view in degrees.
+// Seeker head field of view in degrees. Note that the seeker
+// head can turn on its gimbal, the maximum angle of which
+// is controlled by SeekerMaxBearingAngleDeg.
 var() float SeekerDegFOV;
 // Maximum seeker head bearing angle. How much the seeker head can rotate
 // relative to the missile's longitudinal axis (forward axis).
 var() float SeekerMaxBearingAngleDeg;
+
 // TODO: HOW FAST CAN THE MISSILE TURN?
+// - Add configurable maximum turn rate.
+// According to this: https://www.quora.com/What-are-the-acceleration-capabilities-of-surface-to-air-missiles
+// Early MANPADS maximum would be 4-6 G.
 
 // TODO: need to be able to configure seeker offset relative to mesh center?
 //       - or just assume seeker head is at the center of the missile to simplify things?
