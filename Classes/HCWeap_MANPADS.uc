@@ -30,12 +30,18 @@ var (HeatSeeker) float LockAttemptRetryDelaySeconds;
 var (HeatSeeker) float MaxTargetDistance;
 // Trace box extent for checking locking candidate.
 var (HeatSeeker) vector LockTraceExtent;
-// Override the projectile's MaxAngleDelta. For debug purposes only.
-var (HeatSeeker) float MaxAngleDeltaOverride;
 // Minimum time to track target before locking.
 var (HeatSeeker) float MinTrackTime;
 // Which classes the weapon is able to lock onto.
 var (HeatSeeker) array< class<Object> > TrackableActorClasses;
+
+// TODO: Strela-2 (and maybe others?) should have a half-trigger
+// to full-trigger mechanism. Half-trigger means to "prime" the
+// seeker, and if a successful lock is acquired (indicated by light/sound?),
+// the user can fully depress the trigger in order to initiate the launch.
+// Alternatively, the user can do a full-trigger launch where the launcher
+// automatically fires the missile if the target and tracking parameters
+// are suitable. The problem, is how do we
 
 // TODO: lock target replication needs double-checking!
 
@@ -232,10 +238,6 @@ simulated function Projectile ProjectileFire()
         if (HeatSeeker != None)
         {
             HeatSeeker.LockedTarget = LastLockedTarget;
-            if (MaxAngleDeltaOverride > 0)
-            {
-                HeatSeeker.MaxAngleDelta = MaxAngleDeltaOverride;
-            }
         }
     }
 

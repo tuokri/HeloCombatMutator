@@ -288,3 +288,174 @@ reliable private server function DoGunshipTestOrbit()
         Aircraft.CalculateOrbit();
     }
 }
+
+simulated exec function ExplodeMissiles()
+{
+    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor()
+        || class'HeloCombatMutator'.static.IsDebugBuild())
+    {
+        ServerExplodeMissiles();
+    }
+}
+
+private reliable server function ServerExplodeMissiles()
+{
+    local HCHeatSeekingProjectile Proj;
+
+    ForEach WorldInfo.AllActors(class'HCHeatSeekingProjectile', Proj)
+    {
+        Proj.Explode(Proj.Location, vect(0,0,0));
+    }
+}
+
+exec function ForceNapalmStrike(optional bool bLockX, optional bool bLockY)
+{
+    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor()
+        || class'HeloCombatMutator'.static.IsDebugBuild())
+    {
+        DoTestNapalmStrike(bLockX, bLockY);
+    }
+}
+
+reliable private server function DoTestNapalmStrike(bool bLockX, bool bLockY)
+{
+    local vector TargetLocation, SpawnLocation;
+    local class<RONapalmStrikeAircraft> AircraftClass;
+    local RONapalmStrikeAircraft Aircraft;
+    local ROTeamInfo ROTI;
+    local ROMapInfo ROMI;
+
+    if ( ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
+         ROPlayerReplicationInfo(PlayerReplicationInfo).RoleInfo == none ||
+         Pawn == none )
+    {
+        return;
+    }
+
+    ROTI = ROTeamInfo(PlayerReplicationInfo.Team);
+
+    if ( ROTI != none )
+    {
+        ROTI.ArtyStrikeLocation = ROTI.SavedArtilleryCoords;
+    }
+
+    if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+        TargetLocation = ROTI.ArtyStrikeLocation;
+    else
+        TargetLocation = Pawn.Location;
+
+    ROMI = ROMapInfo(WorldInfo.GetMapInfo());
+
+    if( ROMI != none && ROMI.SouthernForce == SFOR_ARVN )
+        AircraftClass = class'RONapalmStrikeAircraftARVN';
+    else
+        AircraftClass = class'RONapalmStrikeAircraft';
+
+    SpawnLocation = GetBestAircraftSpawnLoc(TargetLocation, ROMapInfo(WorldInfo.GetMapInfo()).NapalmStrikeHeightOffset, AircraftClass);
+    TargetLocation.Z = SpawnLocation.Z;
+
+    Aircraft = Spawn(AircraftClass,self,, SpawnLocation, rotator(TargetLocation - SpawnLocation));
+
+    if ( Aircraft == none )
+    {
+        `log("Error Spawning Support Aircraft");
+    }
+    else
+    {
+        if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+            Aircraft.TargetLocation = ROTI.ArtyStrikeLocation;
+        else
+            Aircraft.TargetLocation = Pawn.Location;
+
+        Aircraft.SetDropPoint();
+    }
+
+    KillsWithCurrentNapalm = 0; // Reset Napalm Kills as We call it in!!!
+}
+
+exec function ForceCanberraStrike(optional float XDir, optional float YDir)
+{
+    local vector2D StrikeDir;
+
+    StrikeDir.X = XDir;
+    StrikeDir.Y = YDir;
+
+    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor()
+        || class'HeloCombatMutator'.static.IsDebugBuild())
+    {
+        DoTestCanberraStrike(StrikeDir);
+    }
+}
+
+reliable private server function DoTestCanberraStrike(optional vector2D StrikeDir)
+{
+    local vector TargetLocation, SpawnLocation;
+    local ROCarpetBomberAircraft Aircraft;
+    local ROTeamInfo ROTI;
+
+    if ( ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
+         ROPlayerReplicationInfo(PlayerReplicationInfo).RoleInfo == none ||
+         Pawn == none )
+    {
+        return;
+    }
+
+    ROTI = ROTeamInfo(PlayerReplicationInfo.Team);
+
+    if ( ROTI != none )
+    {
+        ROTI.ArtyStrikeLocation = ROTI.SavedArtilleryCoords;
+    }
+
+    if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+        TargetLocation = ROTI.ArtyStrikeLocation;
+    else
+        TargetLocation = Pawn.Location;
+
+    SpawnLocation = GetSupportAircraftSpawnLoc(TargetLocation, class'ROCarpetBomberAircraft', StrikeDir);
+
+    if( ROMapInfo(WorldInfo.GetMapInfo()).bUseNapalmHeightOffsetForAll )
+        SpawnLocation.Z += ROMapInfo(WorldInfo.GetMapInfo()).NapalmStrikeHeightOffset;
+    else
+        SpawnLocation.Z += ROMapInfo(WorldInfo.GetMapInfo()).CarpetBomberHeightOffset;
+
+    TargetLocation.Z = SpawnLocation.Z;
+
+    Aircraft = Spawn(class'ROCarpetBomberAircraft',self,, SpawnLocation, rotator(TargetLocation - SpawnLocation));
+
+    if ( Aircraft == none )
+    {
+        `log("Error Spawning Support Aircraft");
+    }
+    else
+    {
+        if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+            Aircraft.TargetLocation = ROTI.ArtyStrikeLocation;
+        else
+            Aircraft.TargetLocation = Pawn.Location;
+
+        Aircraft.SetDropPoint();
+        Aircraft.SetOffset(1);
+    }
+
+    Aircraft = Spawn(class'ROCarpetBomberAircraft',self,, SpawnLocation, rotator(TargetLocation - SpawnLocation));
+
+    if ( Aircraft == none )
+    {
+        `log("Error Spawning Support Aircraft");
+    }
+    else
+    {
+        if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+            Aircraft.TargetLocation = ROTI.ArtyStrikeLocation;
+        else
+            Aircraft.TargetLocation = Pawn.Location;
+
+        Aircraft.InboundDelay += 1;
+        Aircraft.SetDropPoint();
+        Aircraft.SetOffset(2);
+    }
+
+    // Tell this commander to update his ability widget
+    NotifyAbilityActive();
+}

@@ -36,5 +36,4 @@ DefaultProperties
     WeaponProjectiles(0)=class'HCProjectile_Strela2Missile'
 
     PreFireTraceLength=0
-    MaxAngleDeltaOverride=0
 }

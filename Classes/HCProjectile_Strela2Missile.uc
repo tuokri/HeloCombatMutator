@@ -39,7 +39,7 @@ DefaultProperties
     Speed=1600 // 32 / m/s.
     MaxSpeed=21500 // 430 m/s.
 
-    Damage=250
+    Damage=250 // TODO: MULTIPLY DAMAGE WHEN HITTING SUPPORT AIRCRAFT!
     ImpactDamage=1000
     DamageRadius=800
     PenetrationDamageRadius=1000
@@ -47,6 +47,8 @@ DefaultProperties
     ProjFlightTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_Flight'
     ProjExplosionTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_Explosion'
 
-    // AmbientSound=AkEvent'WW_CMD_AntiAir.Play_CMD_AntiAir_Launch'
-    // ExplosionSound=AkEvent'WW_CMD_AntiAir.Play_EXP_SAM_Explode'
+    EffectiveNavigationRatio=5
+
+    AmbientSound=AkEvent'WW_CMD_AntiAir.Play_CMD_AntiAir_Launch'
+    ExplosionSound=AkEvent'WW_CMD_AntiAir.Play_EXP_SAM_Explode'
 }
