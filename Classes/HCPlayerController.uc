@@ -527,12 +527,14 @@ private reliable server function ServerSpawnVehicle(string VehicleClassName)
     // Do ray check and grab actor.
     GetAxes(CamRot, X, Y, Z);
     StartShot = CamLoc;
-    EndShot = StartShot + (500.0 * X);
+    EndShot = StartShot + (2500.0 * X);
 
     VehicleClass = class<ROVehicle>(DynamicLoadObject(VehicleClassName, class'Class'));
 
     ClientMessage("Attempting to spawn " $ VehicleClass @ "at" @ EndShot);
+    `hclog("Attempting to spawn " $ VehicleClass @ "at" @ EndShot);
 
+    EndShot.Z += 250;
     if (VehicleClass != none)
     {
         Vic = Spawn(VehicleClass, , , EndShot, Rotation,, True);
