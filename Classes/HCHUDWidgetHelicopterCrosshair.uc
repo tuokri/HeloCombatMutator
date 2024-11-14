@@ -21,6 +21,10 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
+// "3D" crosshair for third person helicopter camera mode.
+// TODO: there's no need to do all this vector calc in UScript,
+//       just use Canvas::Project and Canvas::DeProject!
 class HCHUDWidgetHelicopterCrosshair extends ROHUDWidget;
 
 var ROVehicleHelicopter MyHelo;
