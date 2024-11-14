@@ -36,6 +36,7 @@
 class HCHeatSeekingProjectile extends PG7VRocket;
 
 const UU_TO_MS = 50;
+const UU_TO_M = 50;
 // Mirrored from ROVehicleHelicopter. 9.81 m/s^2 -> Unreal units.
 const ACCEL_G = 490.5;
 
@@ -340,6 +341,8 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     PNAccel = ClampLength(PNAccel, MaximumTurnGGame * TrackingForceScaler);
     `hcdebug("(CLAMP)  PNAccel=" $ PNAccel @ "[" $ VSize(PNAccel) / ACCEL_G $ "] G");
 
+    `hcdebug("DistanceToTarget=" $ VSize(MissileToTarget) / UU_TO_M @ "meters");
+
     // TODO: how the fuck do we apply this correctly?
     // Apply a force equal to PNAccel magnitude in the direction???
     // We do NOT want PNAccel to accelerate the missile in the forward direction!!!
@@ -402,9 +405,82 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
 
 simulated function Shutdown()
 {
+    local vector HitLocation;
+    local vector HitNormal;
+
     bExploded = True;
     bCanUpdateTracking = False;
-    super.Shutdown();
+
+    bShuttingDown=true;
+    HitNormal = normal(Velocity * -1);
+    Trace(HitLocation,HitNormal,(Location + (HitNormal*-32)), Location + (HitNormal*32),true,vect(0,0,0));
+
+    SetPhysics(PHYS_None);
+
+    if (ProjEffects != None)
+    {
+        ProjEffects.DeactivateSystem();
+    }
+
+    // Leave SmokeTrailComponent active here!
+
+    if (!bSuppressExplosionFX)
+    {
+        SpawnExplosionEffects(Location, HitNormal);
+    }
+
+    if (bStopAmbientSoundOnExplode
+        && AmbientSound != none
+        && AmbientComponent != none
+        && AmbientComponent.IsPlaying())
+    {
+        StopAmbientSound();
+    }
+
+    HideProjectile();
+    SetCollision(false,false);
+
+    // If we have to wait for effects, tweak the death conditions
+
+    if (bWaitForEffects)
+    {
+        if (bNetTemporary)
+        {
+            if (WorldInfo.NetMode == NM_DedicatedServer)
+            {
+                // We are on a dedicated server and not replicating anything nor do we have effects so destroy right away
+                Destroy();
+            }
+            else
+            {
+                // We can't die right away but make sure we don't replicate to anyone
+                RemoteRole = ROLE_None;
+                // make sure we leave enough lifetime for the effect to play
+                LifeSpan = FMax(LifeSpan, 15.0);
+            }
+        }
+        else
+        {
+            bTearOff = true;
+            if (WorldInfo.NetMode == NM_DedicatedServer)
+            {
+                LifeSpan = 0.15;
+            }
+            else
+            {
+                // make sure we leave enough lifetime for the effect to play
+                LifeSpan = FMax(LifeSpan, 15.0);
+            }
+        }
+    }
+    else if (bWaitForInitialReplication && Role == ROLE_Authority)
+    {
+        Lifespan = 0.15;	// necessary when spawn/shutdown in same tick
+    }
+    else
+    {
+        Destroy();
+    }
 }
 
 simulated function Explode(vector HitLocation, vector HitNormal)
@@ -412,6 +488,18 @@ simulated function Explode(vector HitLocation, vector HitNormal)
     bExploded = True;
     bCanUpdateTracking = False;
     super.Explode(HitLocation, HitNormal);
+}
+
+simulated function Destroyed()
+{
+    if (SmokeTrailComponent != None)
+    {
+        SmokeTrailComponent.DeactivateSystem();
+        WorldInfo.MyEmitterPool.OnParticleSystemFinished(SmokeTrailComponent);
+        SmokeTrailComponent = None;
+    }
+
+    super.Destroyed();
 }
 
 simulated function Tick(float DeltaTime)
@@ -449,7 +537,9 @@ simulated function Tick(float DeltaTime)
         return;
     }
 
-    `hclog("Acceleration=" $ Acceleration $ ", AccelG=" $ ACCEL_G / VSize(Acceleration));
+    `hclog("Acceleration=" $ Acceleration $ ", AccelG=" $ ACCEL_G / VSize(Acceleration)
+        @ "Speed=" $ CurrentSpeed / UU_TO_MS @ "m/s"
+    );
 
     ForEach LocalPlayerControllers(class'PlayerController', PC)
     {
@@ -542,6 +632,8 @@ DefaultProperties
     bRotationFollowsVelocity=True
     EffectiveNavigationRatio=5
     MaximumTurnG=6
+
+    bWaitForEffects=True
 
     SpeedPctToTrackingForceScaler={(Points=(
         (InVal=0.00,OutVal=0.001),
