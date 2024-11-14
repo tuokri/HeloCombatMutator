@@ -24,7 +24,7 @@
 class HCPlayerController extends ROPlayerController
     config(Mutator_HeloCombat_Client);
 
-var int LastSpecialMessageTime;
+var transient float LastSpecialMessageTime;
 
 simulated function PostBeginPlay()
 {
@@ -60,8 +60,11 @@ function HeloCombatMutator GetHCM()
     return HCM;
 }
 
-reliable client event ReceiveLocalizedMessage(class<LocalMessage> Message, optional int Switch,
-    optional PlayerReplicationInfo RelatedPRI_1, optional PlayerReplicationInfo RelatedPRI_2,
+reliable client event ReceiveLocalizedMessage(
+    class<LocalMessage> Message,
+    optional int Switch,
+    optional PlayerReplicationInfo RelatedPRI_1,
+    optional PlayerReplicationInfo RelatedPRI_2,
     optional Object OptionalObject)
 {
     // Limit message spam from destroyed projectiles.
@@ -215,7 +218,8 @@ reliable server function ServerCamera(name NewMode)
 
 simulated exec function GiveStrela()
 {
-    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor()
+    if (WorldInfo.NetMode == NM_Standalone
+        || WorldInfo.IsPlayInEditor()
         || class'HeloCombatMutator'.static.IsDebugBuild())
     {
         ROPawn(Pawn).LoadAndCreateInventory("HeloCombat.HCWeap_MANPADS_9K32Strela2_Content");
@@ -230,7 +234,8 @@ reliable private server function ServerGiveStrela(ROPawn ROP)
 
 exec function ForceGunshipOrbit()
 {
-    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor()
+    if (WorldInfo.NetMode == NM_Standalone
+        || WorldInfo.IsPlayInEditor()
         || class'HeloCombatMutator'.static.IsDebugBuild())
     {
         DoGunshipTestOrbit();
@@ -274,7 +279,7 @@ reliable private server function DoGunshipTestOrbit()
 
     Aircraft = Spawn(class'ROGunshipAircraft',self,, SpawnLocation, rotator(TargetLocation - SpawnLocation));
 
-    if ( Aircraft == none )
+    if (Aircraft == none)
     {
         `hclog("Error Spawning Support Aircraft");
     }
@@ -291,7 +296,8 @@ reliable private server function DoGunshipTestOrbit()
 
 simulated exec function ExplodeMissiles()
 {
-    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor()
+    if (WorldInfo.NetMode == NM_Standalone
+        || WorldInfo.IsPlayInEditor()
         || class'HeloCombatMutator'.static.IsDebugBuild())
     {
         ServerExplodeMissiles();
@@ -310,7 +316,8 @@ private reliable server function ServerExplodeMissiles()
 
 exec function ForceNapalmStrike(optional bool bLockX, optional bool bLockY)
 {
-    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor()
+    if (WorldInfo.NetMode == NM_Standalone
+        || WorldInfo.IsPlayInEditor()
         || class'HeloCombatMutator'.static.IsDebugBuild())
     {
         DoTestNapalmStrike(bLockX, bLockY);
@@ -325,16 +332,16 @@ reliable private server function DoTestNapalmStrike(bool bLockX, bool bLockY)
     local ROTeamInfo ROTI;
     local ROMapInfo ROMI;
 
-    if ( ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
+    if  (ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
          ROPlayerReplicationInfo(PlayerReplicationInfo).RoleInfo == none ||
-         Pawn == none )
+         Pawn == none)
     {
         return;
     }
 
     ROTI = ROTeamInfo(PlayerReplicationInfo.Team);
 
-    if ( ROTI != none )
+    if (ROTI != none)
     {
         ROTI.ArtyStrikeLocation = ROTI.SavedArtilleryCoords;
     }
@@ -356,16 +363,20 @@ reliable private server function DoTestNapalmStrike(bool bLockX, bool bLockY)
 
     Aircraft = Spawn(AircraftClass,self,, SpawnLocation, rotator(TargetLocation - SpawnLocation));
 
-    if ( Aircraft == none )
+    if (Aircraft == none)
     {
-        `log("Error Spawning Support Aircraft");
+        `hclog("Error Spawning Support Aircraft");
     }
     else
     {
-        if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+        if (ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0))
+        {
             Aircraft.TargetLocation = ROTI.ArtyStrikeLocation;
+        }
         else
+        {
             Aircraft.TargetLocation = Pawn.Location;
+        }
 
         Aircraft.SetDropPoint();
     }
@@ -380,7 +391,8 @@ exec function ForceCanberraStrike(optional float XDir, optional float YDir)
     StrikeDir.X = XDir;
     StrikeDir.Y = YDir;
 
-    if (WorldInfo.NetMode == NM_Standalone || WorldInfo.IsPlayInEditor()
+    if (WorldInfo.NetMode == NM_Standalone
+        || WorldInfo.IsPlayInEditor()
         || class'HeloCombatMutator'.static.IsDebugBuild())
     {
         DoTestCanberraStrike(StrikeDir);
@@ -393,46 +405,58 @@ reliable private server function DoTestCanberraStrike(optional vector2D StrikeDi
     local ROCarpetBomberAircraft Aircraft;
     local ROTeamInfo ROTI;
 
-    if ( ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
-         ROPlayerReplicationInfo(PlayerReplicationInfo).RoleInfo == none ||
-         Pawn == none )
+    if (ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
+        ROPlayerReplicationInfo(PlayerReplicationInfo).RoleInfo == none ||
+        Pawn == none)
     {
         return;
     }
 
     ROTI = ROTeamInfo(PlayerReplicationInfo.Team);
 
-    if ( ROTI != none )
+    if (ROTI != none)
     {
         ROTI.ArtyStrikeLocation = ROTI.SavedArtilleryCoords;
     }
 
-    if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+    if (ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0))
+    {
         TargetLocation = ROTI.ArtyStrikeLocation;
+    }
     else
+    {
         TargetLocation = Pawn.Location;
+    }
 
     SpawnLocation = GetSupportAircraftSpawnLoc(TargetLocation, class'ROCarpetBomberAircraft', StrikeDir);
 
-    if( ROMapInfo(WorldInfo.GetMapInfo()).bUseNapalmHeightOffsetForAll )
+    if (ROMapInfo(WorldInfo.GetMapInfo()).bUseNapalmHeightOffsetForAll)
+    {
         SpawnLocation.Z += ROMapInfo(WorldInfo.GetMapInfo()).NapalmStrikeHeightOffset;
+    }
     else
+    {
         SpawnLocation.Z += ROMapInfo(WorldInfo.GetMapInfo()).CarpetBomberHeightOffset;
+    }
 
     TargetLocation.Z = SpawnLocation.Z;
 
     Aircraft = Spawn(class'ROCarpetBomberAircraft',self,, SpawnLocation, rotator(TargetLocation - SpawnLocation));
 
-    if ( Aircraft == none )
+    if (Aircraft == none)
     {
-        `log("Error Spawning Support Aircraft");
+        `hclog("Error Spawning Support Aircraft");
     }
     else
     {
-        if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+        if (ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0))
+        {
             Aircraft.TargetLocation = ROTI.ArtyStrikeLocation;
+        }
         else
+        {
             Aircraft.TargetLocation = Pawn.Location;
+        }
 
         Aircraft.SetDropPoint();
         Aircraft.SetOffset(1);
@@ -440,16 +464,20 @@ reliable private server function DoTestCanberraStrike(optional vector2D StrikeDi
 
     Aircraft = Spawn(class'ROCarpetBomberAircraft',self,, SpawnLocation, rotator(TargetLocation - SpawnLocation));
 
-    if ( Aircraft == none )
+    if (Aircraft == none)
     {
-        `log("Error Spawning Support Aircraft");
+        `hclog("Error Spawning Support Aircraft");
     }
     else
     {
-        if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+        if (ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0))
+        {
             Aircraft.TargetLocation = ROTI.ArtyStrikeLocation;
+        }
         else
+        {
             Aircraft.TargetLocation = Pawn.Location;
+        }
 
         Aircraft.InboundDelay += 1;
         Aircraft.SetDropPoint();
@@ -457,5 +485,15 @@ reliable private server function DoTestCanberraStrike(optional vector2D StrikeDi
     }
 
     // Tell this commander to update his ability widget
-    NotifyAbilityActive();
+    HCNotifyAbilityActive();
+}
+
+reliable private client function HCNotifyAbilityActive()
+{
+    `hclog(self $ ".NotifyAbilityActive");
+
+    if (myROHUD != none && myROHUD.CommanderAbilitiesWidget != none)
+    {
+        myROHUD.CommanderAbilitiesWidget.Show(true);
+    }
 }

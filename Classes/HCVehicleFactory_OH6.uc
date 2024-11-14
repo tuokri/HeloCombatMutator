@@ -39,7 +39,9 @@ simulated function PostBeginPlay()
             return;
         }
         else
+        {
             bDisableForCampaign = false;
+        }
     }
 
     /*

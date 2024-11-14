@@ -24,6 +24,8 @@
 class HCHeli_OH6 extends ROHeli_OH6
     abstract;
 
+`include(HeloCombat\Classes\HCHeli_Common.uci)
+
 DefaultProperties
 {
     Team=`AXIS_TEAM_INDEX
@@ -33,6 +35,9 @@ DefaultProperties
 
     Ceiling=50000 // 1000m.
     MaxSpeed=4800
+
+    WeaponPawnClass=class'HCHelicopterWeaponPawn'
+    ClientWeaponPawnClass=class'HCTransportClientSideWeaponPawn'
 
     // Pilot
     Seats(0)={( CameraTag=None,

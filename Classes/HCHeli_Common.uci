@@ -1,0 +1,16 @@
+function bool DriverLeave(bool bForceLeave)
+{
+    local bool bLeaving;
+    local ROPawn LeavingDriver;
+
+    LeavingDriver = ROPawn(Driver);
+    bLeaving = Super.DriverLeave(bForceLeave);
+
+    if (bLeaving && LeavingDriver != None)
+    {
+        // Preserve momentum.
+        LeavingDriver.Velocity = Velocity;
+    }
+
+    return bLeaving;
+}
