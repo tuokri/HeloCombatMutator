@@ -529,12 +529,13 @@ private reliable server function ServerSpawnVehicle(string VehicleClassName)
     StartShot = CamLoc;
     EndShot = StartShot + (500.0 * X);
 
-    // HeloClass = class<ROVehicle>(DynamicLoadObject("ROGameContent.ROHeli_UH1H_Content", class'Class'));
     VehicleClass = class<ROVehicle>(DynamicLoadObject(VehicleClassName, class'Class'));
+
+    ClientMessage("Attempting to spawn " $ VehicleClass @ "at" @ EndShot);
 
     if (VehicleClass != none)
     {
-        Vic = Spawn(VehicleClass, , , EndShot);
+        Vic = Spawn(VehicleClass, , , EndShot, Rotation,, True);
         Vic.Mesh.AddImpulse(vect(0,0,1), Vic.Location);
     }
 }
