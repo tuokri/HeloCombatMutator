@@ -33,7 +33,7 @@ DefaultProperties
     LifeSpan=17
     RocketIgnitionTime=0.3
     SpreadStartDelay=0
-    InitialAccelerationTime=2.0
+    InitialAccelerationTime=2.3 // Actually 2.0, but tends to be lower in practice, when calculated each tick.
     GradualSpreadMultiplier=0
 
     Speed=1600 // 32 / m/s.

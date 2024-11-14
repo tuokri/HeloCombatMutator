@@ -81,6 +81,9 @@ var() float MaxSpeedSq;
 // at lower speeds to make it feel more realistic.
 var() InterpCurveFloat SpeedPctToTrackingForceScaler;
 
+var ParticleSystemComponent SmokeTrailComponent;
+var ParticleSystem SmokeTrailTemplate;
+
 // TODO: think about this.
 var vector SeekerHeadCurrentHeading;
 var vector SeekerHeadDesiredHeading;
@@ -114,6 +117,9 @@ event PreBeginPlay()
 
 simulated function ProcessBulletTouch(Actor Other, Vector HitLocation, Vector HitNormal, PrimitiveComponent OtherComp)
 {
+    `hcdebug("Other=" $ Other @ "HitLocation=" $ HitLocation
+        @ "HitNormal=" $ HitNormal @ "OtherComp=" $ OtherComp);
+
     if (HCHelicopterBaseProtection(Other) != None
         && HCPlayerController(InstigatorController) != None)
     {
@@ -143,7 +149,7 @@ function StartRocketEngine()
     if (Speed < MaxSpeed)
     {
         ForwardAccelStartTime = WorldInfo.TimeSeconds;
-        // Acceleration += Normal(Velocity) * (MaxSpeed - Speed) / InitialAccelerationTime;
+        Acceleration += Normal(Velocity) * (MaxSpeed - Speed) / InitialAccelerationTime;
         `hcdebug("started accelerating");
     }
 
@@ -158,6 +164,11 @@ function CutRocketEngine()
         ProjEffects.SetActive(false);
     }
 
+    if (WorldInfo.NetMode != NM_DedicatedServer && SmokeTrailComponent != None)
+    {
+        SmokeTrailComponent.SetActive(false);
+    }
+
     // TODO: NetMode check here?
     if (AmbientComponent != None)
     {
@@ -165,6 +176,48 @@ function CutRocketEngine()
     }
 
     bTrueBallistics = true;
+}
+
+simulated function MyOnParticleSystemFinished(ParticleSystemComponent PSC)
+{
+    if (PSC == ProjEffects)
+    {
+        if (bWaitForEffects)
+        {
+            if (bShuttingDown)
+            {
+                // it is not safe to destroy the actor here because other threads are doing stuff, so do it next tick.
+                LifeSpan = 0.01;
+            }
+            else
+            {
+                bWaitForEffects = false;
+            }
+        }
+        // clear component and return to pool
+        DetachComponent(ProjEffects);
+        WorldInfo.MyEmitterPool.OnParticleSystemFinished(ProjEffects);
+        ProjEffects = None;
+    }
+    else if (PSC == SmokeTrailComponent)
+    {
+        if (bWaitForEffects)
+        {
+            if (bShuttingDown)
+            {
+                // it is not safe to destroy the actor here because other threads are doing stuff, so do it next tick.
+                LifeSpan = 0.01;
+            }
+            else
+            {
+                bWaitForEffects = false;
+            }
+        }
+        // clear component and return to pool
+        DetachComponent(SmokeTrailComponent);
+        WorldInfo.MyEmitterPool.OnParticleSystemFinished(SmokeTrailComponent);
+        SmokeTrailComponent = None;
+    }
 }
 
 simulated function SpawnFlightEffects()
@@ -189,6 +242,21 @@ simulated function SpawnFlightEffects()
             ProjEffects.SetRotation(rot(0,32768,0));
         }
         AttachComponent(ProjEffects);
+    }
+
+    if (WorldInfo.NetMode != NM_DedicatedServer && SmokeTrailTemplate != None)
+    {
+        SmokeTrailComponent = WorldInfo.MyEmitterPool.SpawnEmitterCustomLifetime(SmokeTrailTemplate);
+        SmokeTrailComponent.SetAbsolute(false, false, false);
+        SmokeTrailComponent.SetLODLevel(WorldInfo.bDropDetail ? 1 : 0);
+        SmokeTrailComponent.OnSystemFinished = MyOnParticleSystemFinished;
+        SmokeTrailComponent.bUpdateComponentInTick = true;
+        SmokeTrailComponent.SetTranslation(ProjFlightFXOffset);
+        // if (bFlipFlightEffect)
+        // {
+        //     SmokeTrailComponent.SetRotation(rot(0,32768,0));
+        // }
+        AttachComponent(SmokeTrailComponent);
     }
 }
 
@@ -221,6 +289,7 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     // TODO: is this right?
     // RotationVector *= DeltaTime;
 
+    DrawDebugLine(Location, Location + Normal(RotationVector)  * 9000,          255, 165, 000); // Orange.
     DrawDebugLine(Location, Location + Normal(MissileToTarget) * 9000,          255, 015, 015);
     DrawDebugLine(Location, LockedTarget.Location,                              255, 015, 015);
     DrawDebugLine(Location, Location + Normal(SeekerHeadCurrentHeading) * 9000, 015, 255, 015);
@@ -277,14 +346,15 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     Acceleration += PNAccel;
 
     // Accelerate forward using rocket engine.
-    if (AccelTimeLeft > 0)
-    {
-        // Get desired speed after this tick?
-        // Add accel to reach desired speed after this tick?
+    // TODO: IS THIS STUPID??
+    // if (AccelTimeLeft > 0)
+    // {
+    //     // Get desired speed after this tick?
+    //     // Add accel to reach desired speed after this tick?
 
-        Acceleration += (X * (MaxSpeed - CurrentSpeed) / AccelTimeLeft) * DeltaTime;
-        AccelTimeLeft -= DeltaTime;
-    }
+    //     Acceleration += (X * (MaxSpeed - CurrentSpeed) / AccelTimeLeft) * DeltaTime;
+    //     AccelTimeLeft -= DeltaTime;
+    // }
 
     // TODO: cleanup!
     return;
@@ -328,6 +398,13 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     /*
     }
     */
+}
+
+simulated function Shutdown()
+{
+    bExploded = True;
+    bCanUpdateTracking = False;
+    super.Shutdown();
 }
 
 simulated function Explode(vector HitLocation, vector HitNormal)
@@ -471,8 +548,11 @@ DefaultProperties
         (InVal=0.25,OutVal=0.005),
         (InVal=0.50,OutVal=0.250),
         (InVal=0.75,OutVal=0.750),
-        (InVal=0.80,OutVal=1.000),
+        (InVal=0.80,OutVal=0.800),
+        (InVal=0.95,OutVal=1.000),
         (InVal=1.00,OutVal=1.000)
         )
     )}
+
+    SmokeTrailTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_SmokeTrail'
 }

@@ -58,10 +58,15 @@ simulated state Active
 
         LastLockedTarget = None;
         LastLockCandidate = None;
+        // LastLockStartTime = -1;
+
+        `hcdebug(GetStateName() $ ":" @ "PreviousStateName=" $ PreviousStateName);
     }
 
     simulated function bool AllowFiring(byte FireModeNum = 0)
     {
+        `hcdebug("FireModeNum=" $ FireModeNum @ "LastLockedTarget=" $ LastLockedTarget);
+
         if (LastLockedTarget != None)
         {
             return super.AllowFiring(FireModeNum);
