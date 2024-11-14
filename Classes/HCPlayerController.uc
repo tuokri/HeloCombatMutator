@@ -26,6 +26,8 @@ class HCPlayerController extends ROPlayerController
 
 var transient float LastSpecialMessageTime;
 
+var HeloCombatMutator CachedHCM;
+
 simulated function PostBeginPlay()
 {
     super.PostBeginPlay();
@@ -50,6 +52,11 @@ function HeloCombatMutator GetHCM()
     local HeloCombatMutator HCM;
     local Mutator Mut;
 
+    if (CachedHCM != None)
+    {
+        return CachedHCM;
+    }
+
     Mut = WorldInfo.Game.BaseMutator;
     while (HCM == None && Mut != None)
     {
@@ -57,6 +64,7 @@ function HeloCombatMutator GetHCM()
         Mut = Mut.NextMutator;
     }
 
+    CachedHCM = HCM;
     return HCM;
 }
 
@@ -232,24 +240,17 @@ reliable private server function ServerGiveStrela(ROPawn ROP)
     ROP.LoadAndCreateInventory("HeloCombat.HCWeap_MANPADS_9K32Strela2_Content");
 }
 
-exec function ForceGunshipOrbit()
+exec function ForceGunshipOrbit(optional float SpawnZOffset = 0.0)
 {
     if (WorldInfo.NetMode == NM_Standalone
         || WorldInfo.IsPlayInEditor()
         || class'HeloCombatMutator'.static.IsDebugBuild())
     {
-        DoGunshipTestOrbit();
+        DoGunshipTestOrbit(SpawnZOffset);
     }
-    /*
-    else
-    {
-        Pawn.TakeDamage();
-        PlayerCamera.PlayCameraShake(Shake);
-    }
-    */
 }
 
-reliable private server function DoGunshipTestOrbit()
+reliable private server function DoGunshipTestOrbit(optional float SpawnZOffset = 0.0)
 {
     local vector TargetLocation, SpawnLocation;
     local ROGunshipAircraft Aircraft;
@@ -275,6 +276,7 @@ reliable private server function DoGunshipTestOrbit()
         TargetLocation = Pawn.Location;
 
     SpawnLocation = GetBestAircraftSpawnLoc(TargetLocation, class'ROGunshipAircraft'.default.Altitude, class'ROGunshipAircraft');
+    SpawnLocation.Z += SpawnZOffset;
     TargetLocation.Z = SpawnLocation.Z;
 
     Aircraft = Spawn(class'ROGunshipAircraft',self,, SpawnLocation, rotator(TargetLocation - SpawnLocation));
@@ -486,6 +488,97 @@ reliable private server function DoTestCanberraStrike(optional vector2D StrikeDi
 
     // Tell this commander to update his ability widget
     HCNotifyAbilityActive();
+}
+
+simulated exec function HCSpawnBushranger()
+{
+    ServerSpawnVehicle("HeloCombat.HCHeli_UH1H_Gunship_Content");
+}
+
+simulated exec function HCSpawnBushrangerAllies()
+{
+    ServerSpawnVehicle("HeloCombat.HCHeli_UH1H_Gunship_Allies_Content");
+}
+
+simulated exec function HCSpawnVehicle(string VehicleClassName)
+{
+    if (WorldInfo.NetMode == NM_Standalone
+        || WorldInfo.IsPlayInEditor()
+        || class'HeloCombatMutator'.static.IsDebugBuild())
+    {
+        ServerSpawnVehicle(VehicleClassName);
+    }
+}
+
+private reliable server function ServerSpawnVehicle(string VehicleClassName)
+{
+    local vector CamLoc;
+    local vector StartShot;
+    local vector EndShot;
+    local vector X;
+    local vector Y;
+    local vector Z;
+    local rotator CamRot;
+    local class<ROVehicle> VehicleClass;
+    local ROVehicle Vic;
+
+    GetPlayerViewPoint(CamLoc, CamRot);
+
+    // Do ray check and grab actor.
+    GetAxes(CamRot, X, Y, Z);
+    StartShot = CamLoc;
+    EndShot = StartShot + (500.0 * X);
+
+    // HeloClass = class<ROVehicle>(DynamicLoadObject("ROGameContent.ROHeli_UH1H_Content", class'Class'));
+    VehicleClass = class<ROVehicle>(DynamicLoadObject(VehicleClassName, class'Class'));
+
+    if (VehicleClass != none)
+    {
+        Vic = Spawn(VehicleClass, , , EndShot);
+        Vic.Mesh.AddImpulse(vect(0,0,1), Vic.Location);
+    }
+}
+
+exec function ForceAerialRecon()
+{
+    if (WorldInfo.NetMode == NM_Standalone
+        || WorldInfo.IsPlayInEditor()
+        || class'HeloCombatMutator'.static.IsDebugBuild())
+    {
+        ServerForceAerialRecon();
+    }
+}
+
+reliable private server function ServerForceAerialRecon()
+{
+    local Sequence GameSeq;
+    local ROGameReplicationInfo ROGRI;
+    local float ReconDuration;
+    local array<SequenceObject> AerialReconSeqEvents;
+    local int i, Team;
+    local Actor AerialReconBaseActor;
+
+    ROGRI = ROGameReplicationInfo(WorldInfo.GRI);
+    GameSeq = WorldInfo.GetGameSequence();
+    Team = GetTeamNum();
+
+    if ( GameSeq != none )
+    {
+        // find any Level Loaded events that exist
+        GameSeq.FindSeqObjectsByClass(class'ROSeqEvent_AerialRecon', true, AerialReconSeqEvents);
+
+        // activate them
+        for (i = 0; i < AerialReconSeqEvents.Length; i++)
+        {
+            AerialReconBaseActor = ROSeqEvent_AerialRecon(AerialReconSeqEvents[i]).TriggerRecon(Team, ROGRI.bReverseRolesAndSpawns, ReconDuration);
+
+            if ( AerialReconBaseActor != none )
+            {
+                ROGameInfo(WorldInfo.Game).SpawnAerialReconPlane(AerialReconBaseActor, ReconDuration, self);
+                break;
+            }
+        }
+    }
 }
 
 reliable private client function HCNotifyAbilityActive()
