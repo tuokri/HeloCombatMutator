@@ -7,3 +7,4 @@ Adds red helicopters for North Vietnam.
 ## Development TODOs
 
 - Add custom seat for helicopters that takes you to third person camera!
+- Write a guide for mappers.
