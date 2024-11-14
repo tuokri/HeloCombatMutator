@@ -6,4 +6,4 @@ Adds red helicopters for North Vietnam.
 
 ## Development TODOs
 
-- Custom base class for vehicle to override DriverLeave() to be able to preserve momentum?
+- Add custom seat for helicopters that takes you to third person camera!
