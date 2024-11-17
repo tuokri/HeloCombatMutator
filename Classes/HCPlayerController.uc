@@ -490,27 +490,27 @@ reliable private server function DoTestCanberraStrike(optional vector2D StrikeDi
     HCNotifyAbilityActive();
 }
 
-simulated exec function HCSpawnBushranger()
+simulated exec function HCSpawnBushranger(optional float ZOffset = 0)
 {
-    ServerSpawnVehicle("HeloCombat.HCHeli_UH1H_Gunship_Content");
+    HCSpawnVehicle("HeloCombat.HCHeli_UH1H_Gunship_Content", ZOffset);
 }
 
-simulated exec function HCSpawnBushrangerAllies()
+simulated exec function HCSpawnBushrangerAllies(optional float ZOffset = 0)
 {
-    ServerSpawnVehicle("HeloCombat.HCHeli_UH1H_Gunship_Allies_Content");
+    HCSpawnVehicle("HeloCombat.HCHeli_UH1H_Gunship_Allies_Content", ZOffset);
 }
 
-simulated exec function HCSpawnVehicle(string VehicleClassName)
+simulated exec function HCSpawnVehicle(string VehicleClassName, optional float ZOffset = 0)
 {
     if (WorldInfo.NetMode == NM_Standalone
         || WorldInfo.IsPlayInEditor()
         || class'HeloCombatMutator'.static.IsDebugBuild())
     {
-        ServerSpawnVehicle(VehicleClassName);
+        ServerSpawnVehicle(VehicleClassName, ZOffset);
     }
 }
 
-private reliable server function ServerSpawnVehicle(string VehicleClassName)
+private reliable server function ServerSpawnVehicle(string VehicleClassName, optional float ZOffset = 0)
 {
     local vector CamLoc;
     local vector StartShot;
@@ -534,7 +534,7 @@ private reliable server function ServerSpawnVehicle(string VehicleClassName)
     ClientMessage("Attempting to spawn " $ VehicleClass @ "at" @ EndShot);
     `hclog("Attempting to spawn " $ VehicleClass @ "at" @ EndShot);
 
-    EndShot.Z += 250;
+    EndShot.Z += 250 + ZOffset;
     if (VehicleClass != none)
     {
         Vic = Spawn(VehicleClass, , , EndShot, Rotation,, True);
