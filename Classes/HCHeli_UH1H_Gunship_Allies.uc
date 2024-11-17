@@ -24,7 +24,9 @@
 class HCHeli_UH1H_Gunship_Allies extends ROHeli_UH1H_Gunship
     abstract;
 
+`define INCLUDE_CHANGE_SEAT(dummy)
 `include(HeloCombat\Classes\HCHeli_Common.uci)
+`undefine(INCLUDE_CHANGE_SEAT)
 
 DefaultProperties
 {

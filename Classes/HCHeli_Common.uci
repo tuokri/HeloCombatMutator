@@ -14,3 +14,67 @@ function bool DriverLeave(bool bForceLeave)
 
     return bLeaving;
 }
+
+`if(`isdefined(INCLUDE_CHANGE_SEAT))
+// TODO: are the pilot checks here necessary for HeloCombatMutator?
+function bool ChangeSeat(Controller ControllerToMove, int RequestedSeat)
+{
+    local ROPlayerReplicationInfo ROPRI;
+    // local int OldSeatIndex;
+
+    `hcdebug("ControllerToMove=" $ ControllerToMove @ "RequestedSeat=" $ RequestedSeat);
+
+    // Don't allow non-pilots into seats that are limited to pilots only.
+    if (RequestedSeat == 0)
+    {
+        ROPRI = ROPlayerReplicationInfo(ControllerToMove.PlayerReplicationInfo);
+        if (ROPRI != none && ROPRI.RoleInfo != none)
+        {
+            if (!ROPRI.RoleInfo.bIsPilot)
+            {
+                ROPlayerController(ControllerToMove).ReceiveLocalizedMessage(class'ROLocalMessageVehicleTwo', ROMSGVEH_RequiresPilot);
+                return false;
+            }
+            else if ((bTransportHelicopter && !ROPRI.RoleInfo.bIsTransportPilot)
+                    || (!bTransportHelicopter && ROPRI.RoleInfo.bIsTransportPilot))
+            {
+                ROPlayerController(ControllerToMove).ReceiveLocalizedMessage(class'ROLocalMessageVehicleTwo', ROMSGVEH_WrongPilot);
+                return false;
+            }
+        }
+    }
+    else if (RequestedSeat == SeatIndexCopilot)
+    {
+        ROPRI = ROPlayerReplicationInfo(ControllerToMove.PlayerReplicationInfo);
+        if (bCopilotMustBePilot && ROPRI != none && ROPRI.RoleInfo != none)
+        {
+            if (!ROPRI.RoleInfo.bIsPilot)
+            {
+                ROPlayerController(ControllerToMove).ReceiveLocalizedMessage(class'ROLocalMessageVehicleTwo', ROMSGVEH_RequiresPilot);
+                return false;
+            }
+            else if ((bTransportHelicopter && !ROPRI.RoleInfo.bIsTransportPilot)
+                    || (!bTransportHelicopter && ROPRI.RoleInfo.bIsTransportPilot))
+            {
+                ROPlayerController(ControllerToMove).ReceiveLocalizedMessage(class'ROLocalMessageVehicleTwo', ROMSGVEH_WrongPilot);
+                return false;
+            }
+        }
+    }
+
+    // // Don't allow pilots to change seats while airborne
+    // if (!bVehicleOnGround && !bWasChassisTouchingGroundLastTick)
+    // {
+    //     OldSeatIndex = GetSeatIndexForController(ControllerToMove);
+
+    //     if (OldSeatIndex == 0 || OldSeatIndex == SeatIndexCopilot)
+    //     {
+    //         ROPlayerController(ControllerToMove).ReceiveLocalizedMessage(class'ROLocalMessageVehicleTwo', ROMSGVEH_Airborne);
+    //         return false;
+    //     }
+    // }
+
+    // Skip ROVehicleHelicopter::ChangeSeat!
+    return super(ROVehicle).ChangeSeat(ControllerToMove, RequestedSeat);
+}
+`endif
