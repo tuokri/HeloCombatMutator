@@ -24,6 +24,8 @@
 
 // Good audio reference: https://www.youtube.com/watch?v=4j45oh32JeI
 // https://www.youtube.com/watch?v=FEBwYtW_VTA
+// https://www.youtube.com/watch?v=WBqDCO4bV4g
+// https://www.youtube.com/watch?v=1iSKNXpBaKY
 
 // Custom projectile class that attempts to guide itself to a locked target.
 // https://en.wikipedia.org/wiki/Proportional_navigation
@@ -77,6 +79,11 @@ var() float MaximumTurnGGame;
 // Cached maximum speed squared.
 var() float MaxSpeedSq;
 
+// Simulate onboard computer errors, acceleration error multiplier range minimum.
+var() float RandomErrorMin;
+// Simulate onboard computer errors, acceleration error multiplier range maximum.
+var() float RandomErrorMax;
+
 // Current speed relative to MaxSpeed [0.0, 1.0] to allowed
 // maximum PN acceleration. Limits missile steering capabilities
 // at lower speeds to make it feel more realistic.
@@ -91,6 +98,7 @@ var vector SeekerHeadDesiredHeading;
 var vector RelativeVelocity;
 var vector MissileToTarget;
 var vector RotationVector;
+var vector PreviousRotationVector;
 var float PreviousLOSAngle;
 
 var float CurrentSpeed;
@@ -98,6 +106,7 @@ var float AccelTimeLeft;
 
 var float ForwardAccelStartTime;
 var bool bDebugLoggedAccel;
+var vector DebugLocLastTick;
 
 // TODO: need to be able to configure seeker offset relative to mesh center?
 //       - or just assume seeker head is at the center of the missile to simplify things?
@@ -146,13 +155,15 @@ function StartRocketEngine()
     RelativeVelocity = LockedTarget.Velocity - Velocity;
     MissileToTarget = LockedTarget.Location - Location;
     SeekerHeadCurrentHeading = MissileToTarget;
+    RotationVector = (MissileToTarget cross RelativeVelocity) / VSizeSq(RelativeVelocity);
 
-    if (Speed < MaxSpeed)
-    {
-        ForwardAccelStartTime = WorldInfo.TimeSeconds;
-        Acceleration += Normal(Velocity) * (MaxSpeed - Speed) / InitialAccelerationTime;
-        `hcdebug("started accelerating");
-    }
+    // TODO: how does missile performance change when we do this in Tick?
+    // if (Speed < MaxSpeed)
+    // {
+    //     ForwardAccelStartTime = WorldInfo.TimeSeconds;
+    //     Acceleration += Normal(Velocity) * (MaxSpeed - Speed) / InitialAccelerationTime;
+    //     `hcdebug("started accelerating");
+    // }
 
     SpawnFlightEffects();
     SetTimer(FueledFlightTime, false, NameOf(CutRocketEngine));
@@ -270,6 +281,8 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     local float Angle;
     local PlayerController PC;
 
+    local float RotationVectorSizeDelta;
+    local float RotationVectorSize;
     local vector X;
     local vector Y;
     local vector Z;
@@ -278,6 +291,7 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     local float LOSAngleDelta;
     local float LOSAngle;
     local float SeekerHeadAngle;
+    local float RandomError;
 
     GetAxes(Rotation, X, Y, Z);
 
@@ -285,8 +299,27 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     `hcdebug("RelativeVelocity=" $ RelativeVelocity / UU_TO_MS @ "m/s");
 
     MissileToTarget = LockedTarget.Location - Location;
-    // RotationVector = (MissileToTarget cross RelativeVelocity) / (RelativeVelocity dot RelativeVelocity);
+
+    // A rotation vector is a compact representation of a 3D rotation.
+    // It is a 3-element vector whose direction represents the axis of
+    // rotation and whose magnitude represents the angle of rotation
+    // in radians. This representation is also known as the axis-angle representation.
     RotationVector = (MissileToTarget cross RelativeVelocity) / VSizeSq(RelativeVelocity);
+
+    RotationVectorSize = VSize(RotationVector);
+    RotationVectorSizeDelta = VSize(PreviousRotationVector) - RotationVectorSize;
+
+    `hcdebug("RotationVectorSize=" $ RotationVectorSize @ "rad?"
+        @ RotationVectorSize * DegToRad @ "deg?"
+        @ "RotationVectorSizeDelta=" $ RotationVectorSizeDelta
+        @ (RotationVectorSizeDelta * DegToRad) / DeltaTime @ "deg/s"
+    );
+
+    PreviousRotationVector = RotationVector;
+
+    // TODO: can we clamp RotationVector length to respect limits?
+    // TODO: how do we tie DeltaTime into this?
+
     // TODO: is this right?
     // RotationVector *= DeltaTime;
 
@@ -306,6 +339,9 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     `hcdebug("SeekerHeadAngle=" $ SeekerHeadAngle @ "rad" @ SeekerHeadAngle * RadToDeg @ "deg");
     `hcdebug("LOSRate=" $ LOSRate @ "rad/s" @ LOSRate * RadToDeg @ "deg/s");
     SeekerHeadCurrentHeading = MissileToTarget;
+
+    RandomError = RandRange(RandomErrorMin, RandomErrorMax);
+    `hcdebug("RandomError=" $ RandomError);
 
     // 1. Check that target is within seeker head's FoV.
     // 2. Based on target location and seeker location, check how much we have to rotate
@@ -328,8 +364,8 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     // TODO: is this pure PN?
     // PNAccel = -EffectiveNavigationRatio * VSize(RelativeVelocity)
     //     * (((Velocity / CurrentSpeed) cross RotationVector) * DeltaTime);
-    PNAccel = -EffectiveNavigationRatio * VSize(RelativeVelocity)
-        * ((Velocity / CurrentSpeed) cross RotationVector);
+    PNAccel = (-EffectiveNavigationRatio * VSize(RelativeVelocity)
+        * ((Velocity / CurrentSpeed) cross RotationVector)) * RandomError;
 
     DrawDebugLine(Location, Location + Normal(PNAccel) * 9000, 015, 015, 255);
 
@@ -350,57 +386,16 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
 
     // Accelerate forward using rocket engine.
     // TODO: IS THIS STUPID??
-    // if (AccelTimeLeft > 0)
-    // {
-    //     // Get desired speed after this tick?
-    //     // Add accel to reach desired speed after this tick?
-
-    //     Acceleration += (X * (MaxSpeed - CurrentSpeed) / AccelTimeLeft) * DeltaTime;
-    //     AccelTimeLeft -= DeltaTime;
-    // }
-
-    // TODO: cleanup!
-    return;
-
-    Direction = Normal(Vector(Rotation));
-    // D = -(Direction dot Location); // TODO: What the fuck is D? Some kind of "padding"?
-
-    /*
-    if ((Direction dot LockedTarget.Location + D) > 0.0)
+    if (AccelTimeLeft > 0)
     {
-        // Candidate is in front semisphere of the missile.
-    */
-        V = LockedTarget.Location - Location;
-        OutSelfToTarget = V;
-        OutDistanceSq = VSizeSq(V);
+        // Get desired speed after this tick?
+        // Add accel to reach desired speed after this tick?
 
-        // Can't see target.
-        if (Trace(HitLoc, HitNormal, LockedTarget.Location, Location + (1000 * Normal(V)), True, vect(1,1,1)) != LockedTarget)
-        {
-            OutAngle = 0;
-        }
-        else
-        {
-            Angle = Acos(Direction dot Normal(V));
-            OutAngle = Angle;
-
-            ForEach LocalPlayerControllers(class'PlayerController', PC)
-            {
-                PC.ClientMessage("Angle = " $ Angle * RadToDeg);
-            }
-        }
-
-        // NOTE: For choosing another target if current is "unreachable".
-        //       Not needed for our use case.
-        // TODO: Actually, maybe this is needed after all! Flares?
-        // if (((Distance / Speed) / DeltaTime) * MaxAngleDelta >= Angle)
-        // {
-        //     OutAngle = Angle;
-        // }
-
-    /*
+        Acceleration += (X * (MaxSpeed - CurrentSpeed) / AccelTimeLeft) * DeltaTime;
+        AccelTimeLeft -= DeltaTime;
     }
-    */
+
+    // TODO: apply small damping force to simulate drag induced by using control surfaces!
 }
 
 simulated function Shutdown()
@@ -411,7 +406,7 @@ simulated function Shutdown()
     bExploded = True;
     bCanUpdateTracking = False;
 
-    bShuttingDown=true;
+    bShuttingDown = True;
     HitNormal = normal(Velocity * -1);
     Trace(HitLocation,HitNormal,(Location + (HitNormal*-32)), Location + (HitNormal*32),true,vect(0,0,0));
 
@@ -442,6 +437,7 @@ simulated function Shutdown()
 
     // If we have to wait for effects, tweak the death conditions
 
+    `hcdebug("bWaitForEffects=" $ bWaitForEffects @ "bNetTemporary=" $ bNetTemporary);
     if (bWaitForEffects)
     {
         if (bNetTemporary)
@@ -475,16 +471,20 @@ simulated function Shutdown()
     }
     else if (bWaitForInitialReplication && Role == ROLE_Authority)
     {
-        Lifespan = 0.15;	// necessary when spawn/shutdown in same tick
+        Lifespan = 0.15; // Necessary when spawn/shutdown in same tick.
     }
     else
     {
         Destroy();
     }
+
+    `hcdebug("SmokeTrailComponent=" $ SmokeTrailComponent);
 }
 
 simulated function Explode(vector HitLocation, vector HitNormal)
 {
+    `hcdebug("HitLocation=" $ HitLocation @ "HitNormal=" $ HitNormal);
+
     bExploded = True;
     bCanUpdateTracking = False;
     super.Explode(HitLocation, HitNormal);
@@ -492,6 +492,8 @@ simulated function Explode(vector HitLocation, vector HitNormal)
 
 simulated function Destroyed()
 {
+    `hcdebug("SmokeTrailComponent=" $ SmokeTrailComponent);
+
     if (SmokeTrailComponent != None)
     {
         SmokeTrailComponent.DeactivateSystem();
@@ -504,20 +506,26 @@ simulated function Destroyed()
 
 simulated function Tick(float DeltaTime)
 {
-    // local int PitchDiff;
-    // local int YawDiff;
-    // local int RollDiff;
     local float DistanceSq;
     local float Angle;
     local PlayerController PC;
-    // local rotator TargetRot;
-    // local rotator NewRot;
-    // local rotator LerpedRot;
     local vector SelfToTarget;
+
+    local float DistanceTraveledSinceLastTick;
 
     super.Tick(DeltaTime);
 
     CurrentSpeed = VSize(Velocity);
+
+    if (!IsZero(DebugLocLastTick))
+    {
+        DistanceTraveledSinceLastTick = VSize(Location - DebugLocLastTick);
+        `hcdebug("DistanceTraveledSinceLastTick=" $ DistanceTraveledSinceLastTick
+            @ "UU" @ DistanceTraveledSinceLastTick / UU_TO_M @ "m"
+            @ "Speed=" $ (DistanceTraveledSinceLastTick / UU_TO_M) / DeltaTime @ "m/s"
+        );
+    }
+    DebugLocLastTick = Location;
 
     // TODO: DEBUG ONLY!
     if (CurrentSpeed >= MaxSpeed && !bDebugLoggedAccel)
@@ -647,4 +655,7 @@ DefaultProperties
     )}
 
     SmokeTrailTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_SmokeTrail'
+
+    RandomErrorMin=1.20
+    RandomErrorMax=0.80
 }
