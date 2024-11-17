@@ -21,3 +21,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+class HCDmgType_Strela2MissileGeneral extends RODmgType_RPG7RocketGeneral;
+
+DefaultProperties
+{
+    WeaponShortName="STRELA-2"
+}

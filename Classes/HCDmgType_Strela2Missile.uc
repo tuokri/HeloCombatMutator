@@ -25,4 +25,5 @@ class HCDmgType_Strela2Missile extends RODmgType_RPG7Rocket;
 
 DefaultProperties
 {
+    WeaponShortName="STRELA-2"
 }

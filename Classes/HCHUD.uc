@@ -56,5 +56,8 @@ DefaultProperties
 
     DefaultHelicopterCrosshairWidget=class'HCHUDWidgetHelicopterCrosshair'
 
+    // TODO: grab WeaponUVs.Length somehow here?
+    // TODO: CUSTOM UI TEXTURES FOR ALL HC WEAPONS!
     WeaponUVs(74)=(WeaponClass=HCWeap_DShK_HMG_Tripod_Content,WeaponTexture=none,KillMessageTexture=Texture2D'VN_UI_Textures.HUD.DeathMessage.UI_Kill_Icon_DShK',KillMessageWidth=128,KillMessageHeight=64)
+    WeaponUVs(75)=(WeaponClass=HCWeap_MANPADS_9K32Strela2_Content,WeaponTexture=none,KillMessageTexture=Texture2D'VN_UI_Textures.HUD.DeathMessage.UI_Kill_Icon_RPG7',KillMessageWidth=128,KillMessageHeight=64)
 }
