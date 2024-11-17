@@ -44,6 +44,10 @@ DefaultProperties
     DamageRadius=800
     PenetrationDamageRadius=1000
 
+    MyDamageType=class'HCDmgType_Strela2Missile'
+    ImpactDamageType=class'HCDmgType_Strela2MissileImpact'
+    GeneralDamageType=class'HCDmgType_Strela2MissileGeneral'
+
     ProjFlightTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_Flight'
     ProjExplosionTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_Explosion'
 
