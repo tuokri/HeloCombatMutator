@@ -29,17 +29,19 @@ class HCProjectile_Strela2Missile extends HCHeatSeekingProjectile;
 
 DefaultProperties
 {
+    BallisticCoefficient=0.15
+
     FueledFlightTime=14
     LifeSpan=17
     RocketIgnitionTime=0.3
     SpreadStartDelay=0
-    InitialAccelerationTime=2.3 // Actually 2.0, but tends to be lower in practice, when calculated each tick.
+    InitialAccelerationTime=2.0 // 2.3 // Actually 2.0, but tends to be lower in practice, when calculated each tick.
     GradualSpreadMultiplier=0
 
     Speed=1600 // 32 / m/s.
     MaxSpeed=21500 // 430 m/s.
 
-    Damage=250 // TODO: MULTIPLY DAMAGE WHEN HITTING SUPPORT AIRCRAFT!
+    Damage=250 // TODO: MULTIPLY DAMAGE WHEN HITTING SUPPORT AIRCRAFT!?
     ImpactDamage=1000
     DamageRadius=800
     PenetrationDamageRadius=1000
