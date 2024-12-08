@@ -72,7 +72,8 @@ var() float SeekerMaxBearingAngleDeg;
 // Usually between 3-5.
 var() int EffectiveNavigationRatio;
 // According to this: https://www.quora.com/What-are-the-acceleration-capabilities-of-surface-to-air-missiles
-// Early MANPADS maximum would be 4-6 G.
+// Early MANPADS maximum would be 4-6 G?
+// But does that make sense since planes can pull that amount?
 var() float MaximumTurnG;
 // Calculated MaximumTurnG force in engine units.
 var() float MaximumTurnGGame;
@@ -141,6 +142,10 @@ event PreBeginPlay()
     // force or other external forces are applied on the missile, based on how
     // long it would take to accelerate from initial launch speed to maximum speed.
     MaxForwardAccel = (MaxSpeed - Speed) / InitialAccelerationTime;
+    // Adjust this since in practice the missile accelerates faster than
+    // the values would suggest. E.g. 2.0 InitialAccelerationTime almost
+    // always leads to real acceleration time of ~1.7 in game.
+    MaxForwardAccel *= 0.85;
     `hcdebug("MaxForwardAccel=" $ MaxForwardAccel);
 
     MaximumTurnGGame = MaximumTurnG * ACCEL_G;
@@ -797,7 +802,9 @@ DefaultProperties
     bExplodeOnDeflect=True
     bRotationFollowsVelocity=True
     EffectiveNavigationRatio=5
-    MaximumTurnG=6
+    // Guesstimated value for max turn G.
+    // TODO: find some good sources on MANPADS turn performance.
+    MaximumTurnG=10
     FinArea=250.0
     StartUpdatingTrackingSpeedPct=0.25
 
