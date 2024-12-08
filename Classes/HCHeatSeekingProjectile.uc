@@ -70,7 +70,6 @@ var() float SeekerDegFOV;
 var() float SeekerMaxBearingAngleDeg;
 // The N constant in the proportional navigation formula.
 // Usually between 3-5.
-// TODO: should be an integer?
 var() int EffectiveNavigationRatio;
 // According to this: https://www.quora.com/What-are-the-acceleration-capabilities-of-surface-to-air-missiles
 // Early MANPADS maximum would be 4-6 G.
@@ -79,12 +78,18 @@ var() float MaximumTurnG;
 var() float MaximumTurnGGame;
 // Cached maximum speed squared.
 var() float MaxSpeedSq;
-// Maneuvering induces a drag force on the missile. The area from which the drag
-// force is calculated is simulated by multiplying PNAccel magnitude by DampingForceScaler.
-// TODO: maybe give this a better name?
-var() float DampingForceScaler;
-// TODO: comment.
+// Missile fin area that contributes to drag while turning. Value chosen experimentally.
 var() float FinArea;
+// Do not start updating tracking parameters until this speed is reached.
+// This is to avoid over-corrections shorty after launching the missile.
+// Percentage of MaxSpeed.
+var() float StartUpdatingTrackingSpeedPct;
+// Calculated dynamically from MaxSpeed and StartUpdatingTrackingSpeedPct.
+var() float StartUpdatingTrackingSpeed;
+
+// Interval between proportional navigation data updates.
+// var() float PNUpdateInterval;
+// var() vector PNAcceleration;
 
 // Simulate onboard computer errors, acceleration error multiplier range minimum.
 var() float RandomErrorMin;
@@ -97,7 +102,7 @@ var() float RandomErrorMax;
 // all fuel is depleted, maneuvering will gradually slow down the missile.
 var() float Fuel;
 
-var() float MaxForwardAccelPerSecond;
+var() float MaxForwardAccel;
 
 // Current speed relative to MaxSpeed [0.0, 1.0] to allowed
 // maximum PN acceleration. Limits missile steering capabilities
@@ -118,13 +123,10 @@ var float PreviousLOSAngle;
 
 var float CurrentSpeedSquared;
 var float CurrentSpeed;
-// var float AccelTimeLeft;
 
 var float ForwardAccelStartTime;
 var bool bDebugLoggedAccel;
 var vector DebugLocLastTick;
-
-// var() StaticMeshComponent ProjMesh;
 
 // TODO: need to be able to configure seeker offset relative to mesh center?
 //       - or just assume seeker head is at the center of the missile to simplify things?
@@ -138,37 +140,26 @@ event PreBeginPlay()
     // We estimate how much we can accelerate forward per second when no drag
     // force or other external forces are applied on the missile, based on how
     // long it would take to accelerate from initial launch speed to maximum speed.
-    MaxForwardAccelPerSecond = (MaxSpeed - Speed) / InitialAccelerationTime;
-    `hcdebug("MaxForwardAccelPerSecond=" $ MaxForwardAccelPerSecond);
+    MaxForwardAccel = (MaxSpeed - Speed) / InitialAccelerationTime;
+    `hcdebug("MaxForwardAccel=" $ MaxForwardAccel);
 
     MaximumTurnGGame = MaximumTurnG * ACCEL_G;
     DamageRadiusSq = DamageRadius * DamageRadius;
 
     MaxSpeedSq = (MaxSpeed * MaxSpeed);
 
-    // TODO: for some reason our calcs make it so the missile accelerates a bit
-    //       faster than it is supposed to. Increase the time here just a little bit.
-    // AccelTimeLeft = InitialAccelerationTime * 1.2;
+    StartUpdatingTrackingSpeed = MaxSpeed * StartUpdatingTrackingSpeedPct;
+    `hcdebug("StartUpdatingTrackingSpeed=" $ StartUpdatingTrackingSpeed
+        @ "StartUpdatingTrackingSpeed=" $ StartUpdatingTrackingSpeed / UU_TO_MS @ "m/s"
+    );
 
-    // Ignore gravity in the beginning to prevent the missile from drooping.
-    // TODO: there is most likely a better solution to this!
-    //       Set physics to PHYS_None?
-    // ForEach AllOwnedComponents(class'StaticMeshComponent', MeshComp)
+    SetTimer(0.1, True, NameOf(CheckCanUpdateTracking));
+
+    // if (PNUpdateInterval <= 0.0)
     // {
-    //     `hcdebug("MeshComp=" $ MeshComp @ "Name=" $ MeshComp.Name);
-
-    //     // TODO: for now, assuming the missile only has a single mesh comp.
-    //     // TODO: maybe refactor this? Add a named variable that is the component.
-    //     // TODO: need to rip out some stuff from the inheritance chain for this!
-
-    //     // if (MeshComp.Name == 'ProjectileMesh')
-    //     // {
-    //         `hcdebug("Found MeshComp=" $ MeshComp);
-    //         ProjMesh.GetRootBodyInstance().CustomGravityFactor = 0.0;
-    //         ProjMesh = MeshComp;
-    //         break;
-    //     // }
+    //     PNUpdateInterval = 0.5;
     // }
+    // SetTimer(PNUpdateInterval, True, NameOf(UpdateProNav));
 }
 
 simulated function ProcessBulletTouch(Actor Other, Vector HitLocation, Vector HitNormal, PrimitiveComponent OtherComp)
@@ -193,9 +184,7 @@ function StartRocketEngine()
 {
     `hcdebug("rocket engine started");
 
-    // ProjMesh.GetRootBodyInstance().CustomGravityFactor = 1.0;
-
-    bCanUpdateTracking = True;
+    // bCanUpdateTracking = True;
     TrackingForceScaler = 0.001;
 
     // TODO: is there a better place to do this?
@@ -229,7 +218,8 @@ function CutRocketEngine()
         AmbientComponent.StopEvents();
     }
 
-    bTrueBallistics = true;
+    bTrueBallistics = True;
+    bCanUpdateTracking = False;
 }
 
 simulated function MyOnParticleSystemFinished(ParticleSystemComponent PSC)
@@ -276,13 +266,6 @@ simulated function MyOnParticleSystemFinished(ParticleSystemComponent PSC)
 
 simulated function SpawnFlightEffects()
 {
-    // Start effects when the sustainer engine is started.
-    // TODO: add separate effects for the initial booster!
-    if (!bCanUpdateTracking)
-    {
-        return;
-    }
-
     if (WorldInfo.NetMode != NM_DedicatedServer && ProjFlightTemplate != None)
     {
         ProjEffects = WorldInfo.MyEmitterPool.SpawnEmitterCustomLifetime(ProjFlightTemplate);
@@ -314,7 +297,147 @@ simulated function SpawnFlightEffects()
     }
 }
 
-simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq, out float OutAngle, out vector OutSelfToTarget)
+// simulated function UpdateProNav()
+// {
+//     local float RotationVectorSizeDelta;
+//     local float RotationVectorSize;
+//     local vector X;
+//     local vector Y;
+//     local vector Z;
+//     local vector PNAccel;
+//     local vector DragForce;
+//     local vector ForwardAccel;
+//     local Quat RotQuat;
+//     local float SeekerHeadAngle;
+//     local float RandomError;
+//     local float PNAccelSize;
+//     local float DesiredRotRate;
+//     // local float DesiredRotThisTick;
+
+//     `hclog("bCanUpdateTracking=" $ bCanUpdateTracking);
+
+//     if (!bCanUpdateTracking)
+//     {
+//         return;
+//     }
+
+//     GetAxes(Rotation, X, Y, Z);
+
+//     if (!bCanUpdateTracking)
+//     {
+//         return;
+//     }
+
+//     RelativeVelocity = LockedTarget.Velocity - Velocity;
+//     `hcdebug("RelativeVelocity=" $ RelativeVelocity / UU_TO_MS @ "m/s");
+
+//     MissileToTarget = LockedTarget.Location - Location;
+
+//     // Rotation vector of the line of sight.
+//     // A rotation vector is a compact representation of a 3D rotation.
+//     // It is a 3-element vector whose direction represents the axis of
+//     // rotation and whose magnitude represents the angle of rotation
+//     // in radians. This representation is also known as the axis-angle representation.
+//     RotationVector = (MissileToTarget cross RelativeVelocity) / VSizeSq(RelativeVelocity);
+//     // RotationVector *= DeltaTime; // TODO: what does this exactly do?
+
+//     RotationVectorSize = VSize(RotationVector);
+//     RotationVectorSizeDelta = VSize(PreviousRotationVector) - RotationVectorSize;
+
+//     `hcdebug("RotationVectorSize=" $ RotationVectorSize @ "rad?"
+//         @ RotationVectorSize * DegToRad @ "deg?"
+//         @ "RotationVectorSizeDelta=" $ RotationVectorSizeDelta
+//         // @ (RotationVectorSizeDelta * DegToRad) / DeltaTime @ "deg/s"
+//     );
+
+//     PreviousRotationVector = RotationVector;
+
+//     // TODO: can we clamp RotationVector length to respect limits?
+//     // TODO: how do we tie DeltaTime into this?
+
+//     DrawDebugLine(Location, Location + Normal(RotationVector)  * 9000,          255, 165, 000); // Orange.
+//     DrawDebugLine(Location, Location + Normal(MissileToTarget) * 9000,          255, 015, 015);
+//     DrawDebugLine(Location, LockedTarget.Location,                              255, 015, 015);
+//     DrawDebugLine(Location, Location + Normal(SeekerHeadCurrentHeading) * 9000, 015, 255, 015);
+//     DrawDebugLine(Location, Location + Normal(Velocity) * 9000,                 255, 000, 255); // Magenta.
+
+//     SeekerHeadAngle = ACos(X dot Normal(SeekerHeadCurrentHeading));
+//     `hcdebug("SeekerHeadAngle=" $ SeekerHeadAngle @ "rad" @ SeekerHeadAngle * RadToDeg @ "deg");
+//     SeekerHeadCurrentHeading = MissileToTarget;
+
+//     RandomError = RandRange(RandomErrorMin, RandomErrorMax);
+//     `hcdebug("RandomError=" $ RandomError);
+
+//     // TODO:
+//     // 1. Check that target is within seeker head's FoV.
+//     // 2. Based on target location and seeker location, check how much we have to rotate
+//     //    to keep direct LoS to target.
+//     // 3. Limit seeker head rotator angle to SeekerMaxBearingAngleDeg, limit the amount
+//     //    seeker head rotates by TrackingMaxDegPerSecond.
+//     // 4. Verify that current target is within allowed seeker head params!
+//     // 5. Calculate and apply PN acceleration.
+
+//     // Wikipedia, energy conserving control.
+//     // This is our raw instantaneous acceleration to snap missile into correct
+//     // course. Of course we cannot do that and have to stay within realistic G limits
+//     // and also have to factor DeltaTime into this!
+//     // NOTE: is this pure PN?
+//     PNAccel = (-EffectiveNavigationRatio * VSize(RelativeVelocity)
+//         * ((Velocity / CurrentSpeed) cross RotationVector)) * RandomError;
+
+//     DrawDebugLine(Location, Location + Normal(PNAccel) * 9000, 015, 015, 255);
+
+//     // TODO: remove multiple calculations of PNAccelSize once less debugging is needed!
+
+//     TrackingForceScaler = EvalInterpCurveFloat(SpeedPctToTrackingForceScaler, CurrentSpeedSquared / MaxSpeedSq);
+
+//     PNAccelSize = VSize(PNAccel);
+//     `hcdebug("(RAW)    PNAccel=" $ PNAccel @ "[" $ PNAccelSize / ACCEL_G $ "] G");
+//     PNAccel = ClampLength(PNAccel, MaximumTurnGGame * TrackingForceScaler);
+//     PNAccelSize = VSize(PNAccel);
+//     `hcdebug("(CLAMP)  PNAccel=" $ PNAccel @ "[" $ PNAccelSize / ACCEL_G $ "] G");
+
+//     `hcdebug("DistanceToTarget=" $ VSize(MissileToTarget) / UU_TO_M @ "meters");
+
+//     PNAcceleration = PNAccel;
+
+//     DesiredRotRate = PNAccelSize / CurrentSpeed;
+//     // DesiredRotThisTick = DesiredRotRate * DeltaTime;
+//     `hcdebug("DesiredRotRate=" $ DesiredRotRate
+//         // @ "DesiredRotThisTick=" $ DesiredRotThisTick
+//     );
+
+//     // TODO: this is not right.
+//     // RotQuat = QuatFromAxisAndAngle(Normal(PNAccel), DesiredRotThisTick);
+//     // DrawDebugLine(Location, Location + Normal(DragForce) * 9000, 255, 255, 255);
+//     // SetRotation(QuatToRotator(QuatProduct(QuatFromRotator(Rotation), RotQuat)));
+//     // Velocity = Normal(vector(Rotation)) * CurrentSpeed;
+//     // QuatSlerp();
+
+//     // TODO: how the fuck do we apply this correctly?
+//     // TODO: DeltaTime should be part of this equation somewhere!
+//     // Acceleration += PNAccel;
+
+//     // Apply small damping force to simulate drag induced by using control surfaces!
+//     // Simulates control fin / missile surface area:
+//     //  - If the missile is turning hard, the angle between missile forward axis and
+//     //    velocity is higher, and therefore the missile fins and surface are
+//     //    inducing more drag, since it is flying "sideways" while turning.
+
+//     // Drag equation with simplifications and approximations.
+//     // DragForce = (-Normal(Velocity) * AIR_DENSITY * BallisticCoefficient
+//     //     * CurrentSpeedSquared * 0.5
+//     //     * (ACos(X dot Normal(Velocity)) * FinArea)
+//     //     * DeltaTime);
+//     // // Acceleration += DragForce;
+//     // `hcdebug("VSize(DragForce)=" $ VSize(DragForce) @ "PNAccelSize=" $ PNAccelSize);
+//     // DrawDebugLine(Location, Location + Normal(DragForce) * 9000, 255, 255, 255);
+
+//     // TODO: try this?
+//     // Acceleration = ClampLength(Acceleration, MaximumTurnGGame);
+// }
+
+simulated function ApplyVelocityAndAccel(float DeltaTime)
 {
     local float RotationVectorSizeDelta;
     local float RotationVectorSize;
@@ -324,25 +447,69 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     local vector PNAccel;
     local vector DragForce;
     local vector ForwardAccel;
-    // local float LOSRate;
-    // local float LOSAngleDelta;
-    // local float LOSAngle;
+    // local Quat RotQuat;
     local float SeekerHeadAngle;
     local float RandomError;
     local float PNAccelSize;
+    local float DesiredRotRate;
+    local float DesiredRotThisTick;
+
+    // TODO: USE THIS!
+    local float AccelBudget;
+    AccelBudget = MaximumTurnGGame;
+    `hcdebug("AccelBudget=" $ AccelBudget);
 
     GetAxes(Rotation, X, Y, Z);
+
+    // TODO: factor Fuel into this equation!
+    // Accelerate forward using rocket engine.
+    if (CurrentSpeed < MaxSpeed)
+    {
+        ForwardAccel = (X * MaxForwardAccel); //* DeltaTime;
+        `hcdebug("ForwardAccel=" $ ForwardAccel @ "VSize(ForwardAccel)=" $ VSize(ForwardAccel));
+        // TODO: RETHINK THIS PART?
+        AccelBudget -= VSize(ForwardAccel);
+        Acceleration = ForwardAccel;
+        `hcdebug("AccelBudget=" $ AccelBudget @ "(after forward accel)");
+
+        // TODO: we can't modify Acceleration here as it fucks up PN accel calcs???
+        // Velocity += X * MaxForwardAccel * DeltaTime;
+        // CurrentSpeed = VSize(Velocity);
+
+        // TODO: better accel calc here!
+        // 1. Calculate desired forward velocity this tick.
+        // 2. Calculate acceleration needed this tick to reach the velocity.
+        // 3. At the end of this function, sum all accelerations and assign them!
+
+        DrawDebugLine(Location, Location + Normal(ForwardAccel) * 9000, 000, 000, 000);
+    }
+
+    if (!bCanUpdateTracking)
+    {
+        return;
+    }
+
+    // Acceleration += (PNAcceleration / PNUpdateInterval) * DeltaTime;
+
+    // TODO: CLEANUP!
+    // return;
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     RelativeVelocity = LockedTarget.Velocity - Velocity;
     `hcdebug("RelativeVelocity=" $ RelativeVelocity / UU_TO_MS @ "m/s");
 
     MissileToTarget = LockedTarget.Location - Location;
 
+    // Rotation vector of the line of sight.
     // A rotation vector is a compact representation of a 3D rotation.
     // It is a 3-element vector whose direction represents the axis of
     // rotation and whose magnitude represents the angle of rotation
     // in radians. This representation is also known as the axis-angle representation.
     RotationVector = (MissileToTarget cross RelativeVelocity) / VSizeSq(RelativeVelocity);
+    // RotationVector *= DeltaTime; // TODO: what does this exactly do?
 
     RotationVectorSize = VSize(RotationVector);
     RotationVectorSizeDelta = VSize(PreviousRotationVector) - RotationVectorSize;
@@ -364,12 +531,8 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     DrawDebugLine(Location, Location + Normal(SeekerHeadCurrentHeading) * 9000, 015, 255, 015);
     DrawDebugLine(Location, Location + Normal(Velocity) * 9000,                 255, 000, 255); // Magenta.
 
-    // LOSAngleDelta = ACos(Normal(MissileToTarget) dot Normal(SeekerHeadCurrentHeading));
     SeekerHeadAngle = ACos(X dot Normal(SeekerHeadCurrentHeading));
-    // LOSRate = LOSAngleDelta / DeltaTime;
-    // `hcdebug("LOSAngleDelta=" $ LOSAngleDelta @ "rad" @ LOSAngleDelta * RadToDeg @ "deg");
     `hcdebug("SeekerHeadAngle=" $ SeekerHeadAngle @ "rad" @ SeekerHeadAngle * RadToDeg @ "deg");
-    // `hcdebug("LOSRate=" $ LOSRate @ "rad/s" @ LOSRate * RadToDeg @ "deg/s");
     SeekerHeadCurrentHeading = MissileToTarget;
 
     RandomError = RandRange(RandomErrorMin, RandomErrorMax);
@@ -385,55 +548,76 @@ simulated function UpdateTrackingParams(float DeltaTime, out float OutDistanceSq
     // 5. Calculate and apply PN acceleration.
 
     // Wikipedia, energy conserving control.
+    // This is our raw instantaneous acceleration to snap missile into correct
+    // course. Of course we cannot do that and have to stay within realistic G limits
+    // and also have to factor DeltaTime into this!
     // NOTE: is this pure PN?
     PNAccel = (-EffectiveNavigationRatio * VSize(RelativeVelocity)
         * ((Velocity / CurrentSpeed) cross RotationVector)) * RandomError;
+
+    // TODO: PNAccel is desired instant accel this tick to "snap" to correct course.
+    // 1. Scale this acceleration by TrackingForceScaler.
+    // 2. G-limit the acceleration.
+    // 3. At the end of this function, sum final PNAccel with other accelerations.
 
     DrawDebugLine(Location, Location + Normal(PNAccel) * 9000, 015, 015, 255);
 
     // TODO: remove multiple calculations of PNAccelSize once less debugging is needed!
 
+    TrackingForceScaler = EvalInterpCurveFloat(SpeedPctToTrackingForceScaler, CurrentSpeedSquared / MaxSpeedSq);
+    PNAccel *= TrackingForceScaler;
+
     PNAccelSize = VSize(PNAccel);
     `hcdebug("(RAW)    PNAccel=" $ PNAccel @ "[" $ PNAccelSize / ACCEL_G $ "] G");
-    PNAccel = ClampLength(PNAccel, MaximumTurnGGame * TrackingForceScaler);
-    PNAccelSize = VSize(PNAccel);
-    `hcdebug("(CLAMP)  PNAccel=" $ PNAccel @ "[" $ PNAccelSize / ACCEL_G $ "] G");
+    // PNAccel = ClampLength(PNAccel, MaximumTurnGGame * TrackingForceScaler);
+    // PNAccelSize = VSize(PNAccel);
+    // `hcdebug("(CLAMP)  PNAccel=" $ PNAccel @ "[" $ PNAccelSize / ACCEL_G $ "] G");
 
     `hcdebug("DistanceToTarget=" $ VSize(MissileToTarget) / UU_TO_M @ "meters");
 
+    DesiredRotRate = PNAccelSize / CurrentSpeed;
+    DesiredRotThisTick = DesiredRotRate * DeltaTime;
+    `hcdebug("DesiredRotRate=" $ DesiredRotRate @ "DesiredRotThisTick=" $ DesiredRotThisTick);
+
+    // TODO: this is not right.
+    // RotQuat = QuatFromAxisAndAngle(Normal(PNAccel), DesiredRotThisTick);
+    // DrawDebugLine(Location, Location + Normal(DragForce) * 9000, 255, 255, 255);
+    // SetRotation(QuatToRotator(QuatProduct(QuatFromRotator(Rotation), RotQuat)));
+    // Velocity = Normal(vector(Rotation)) * CurrentSpeed;
+    // QuatSlerp();
+
     // TODO: how the fuck do we apply this correctly?
-    // TODO: DeltaTime should be part of this equation somewhere!
-    Acceleration += PNAccel;
+    // PNAccel = ClampLength(PNAccel, AccelBudget);
+    PNAccel = ClampLength(PNAccel, MaximumTurnGGame);
+    AccelBudget -= VSize(PNAccel);
+    `hcdebug("AccelBudget=" $ AccelBudget @ "(after PN accel)");
+    Acceleration += PNAccel; // TODO: zzzz?
 
-    // TODO: factor Fuel into this equation!
-    // Accelerate forward using rocket engine.
-    if (CurrentSpeed < MaxSpeed)
-    {
-        ForwardAccel = (X * MaxForwardAccelPerSecond) * DeltaTime;
-        `hcdebug("ForwardAccel=" $ ForwardAccel @ "VSize(ForwardAccel)=" $ VSize(ForwardAccel));
-        Acceleration += ForwardAccel;
+    // TODO: The following causes very snappy and weird behavior!
+    // Acceleration += ClampLength(PNAccel, MaximumTurnGGame);
 
-        DrawDebugLine(Location, Location + Normal(ForwardAccel) * 9000, 000, 000, 000);
-    }
-
-    // TODO: REWRITE COMMENTS WHEN THIS FUCKER IS GOOD!
+    // TODO: can we have "acceleration budget", some of which is used by
+    // forward acceleration and the rest by PN normal accel?
 
     // Apply small damping force to simulate drag induced by using control surfaces!
     // Simulates control fin / missile surface area:
-    //  - If the missile is turning hard the PN accel is high therefore, the fins are
-    //    inducing more drag and the missile's own surface area is also contributing
-    //    more to the drag, since it is flying "sideways" while turning. DampingForceScaler
-    //    is a scaler chosen by practical experiments. Higher scaler value simulates higher
-    //    fin and missile surface area that contributes to drag.
+    //  - If the missile is turning hard, the angle between missile forward axis and
+    //    velocity is higher, and therefore the missile fins and surface are
+    //    inducing more drag, since it is flying "sideways" while turning.
 
     // Drag equation with simplifications and approximations.
     DragForce = (-Normal(Velocity) * AIR_DENSITY * BallisticCoefficient
         * CurrentSpeedSquared * 0.5
-        * (ACos(X dot Normal(Velocity)) * FinArea * DampingForceScaler) // TODO: PLUG IN AREA HERE!
+        * (ACos(X dot Normal(Velocity)) * FinArea)
         * DeltaTime);
-    Acceleration += DragForce;
+    // Acceleration += DragForce;
     `hcdebug("VSize(DragForce)=" $ VSize(DragForce) @ "PNAccelSize=" $ PNAccelSize);
     DrawDebugLine(Location, Location + Normal(DragForce) * 9000, 255, 255, 255);
+
+    // TODO: try this?
+    // Acceleration = ClampLength(Acceleration, MaximumTurnGGame);
+
+    // TODO: at the end, sum all accelerations and assign (don't sum) them!
 }
 
 simulated function Shutdown()
@@ -542,16 +726,27 @@ simulated function Destroyed()
     super.Destroyed();
 }
 
+simulated function CheckCanUpdateTracking()
+{
+    if (CurrentSpeed >= StartUpdatingTrackingSpeed)
+    {
+        `hcdebug("setting bCanUpdateTracking to True");
+        bCanUpdateTracking = True;
+        ClearTimer(NameOf(CheckCanUpdateTracking));
+    }
+}
+
 simulated function Tick(float DeltaTime)
 {
-    local float DistanceSq;
-    local float Angle;
     local PlayerController PC;
-    local vector SelfToTarget;
-
     local float DistanceTraveledSinceLastTick;
 
     super.Tick(DeltaTime);
+
+    if (bExploded)
+    {
+        return;
+    }
 
     CurrentSpeedSquared = VSizeSq(Velocity);
     CurrentSpeed = VSize(Velocity);
@@ -579,11 +774,6 @@ simulated function Tick(float DeltaTime)
         }
     }
 
-    if (bExploded)
-    {
-        return;
-    }
-
     `hclog("Acceleration=" $ Acceleration $ ", AccelG=" $ ACCEL_G / VSize(Acceleration)
         @ "Speed=" $ CurrentSpeed / UU_TO_MS @ "m/s"
     );
@@ -593,84 +783,12 @@ simulated function Tick(float DeltaTime)
         PC.ClientMessage("Speed=" $ CurrentSpeed / UU_TO_MS @ "m/s");
     }
 
-    if (!bCanUpdateTracking)
+    if (bTrueBallistics)
     {
         return;
     }
 
-    // TrackingForceScaler = FClamp((CurrentSpeed / MaxSpeed), 0.01, 1.0);
-    // TrackingForceScaler = FClamp((VSizeSq(Velocity) / MaxSpeedSqForTrackingScaler), 0.001, 1.0);
-    TrackingForceScaler = EvalInterpCurveFloat(SpeedPctToTrackingForceScaler, CurrentSpeedSquared / MaxSpeedSq);
-    UpdateTrackingParams(DeltaTime, DistanceSq, Angle, SelfToTarget);
-
-    if (bTrueBallistics || LockedTarget == None || Angle == 0)
-    {
-        return;
-    }
-
-    // TODO: cleanup!
-    return;
-
-    // if (Angle <= MaxAngleDelta)
-    // {
-    //     // TODO: this is stupid!
-    //     // Velocity = Speed * Normal(SelfToTarget);
-    //     Velocity = VSize(Velocity) * Normal(SelfToTarget);
-    // }
-    // else
-    // {
-    //     ForEach LocalPlayerControllers(class'PlayerController', PC)
-    //     {
-    //         PC.ClientMessage("Using custom angle calc...");
-    //     }
-
-    //     TargetRot = rotator(Normal(SelfToTarget));
-    //     LerpedRot = RLerp(Rotation, TargetRot, 0.95, True); // TODO: Stupid?
-    //     PitchDiff = LerpedRot.Pitch - Rotation.Pitch;
-    //     YawDiff = LerpedRot.Yaw - Rotation.Yaw;
-    //     RollDiff = LerpedRot.Roll - Rotation.Roll;
-
-    //     ForEach LocalPlayerControllers(class'PlayerController', PC)
-    //     {
-    //         PC.ClientMessage("RotDiff P Y R          : " @ PitchDiff @ YawDiff @ RollDiff);
-    //     }
-
-    //     PitchDiff = Clamp(PitchDiff, -MaxAngleDeltaUnrRot, MaxAngleDeltaUnrRot);
-    //     YawDiff = Clamp(YawDiff, -MaxAngleDeltaUnrRot, MaxAngleDeltaUnrRot);
-    //     RollDiff = Clamp(RollDiff, -MaxAngleDeltaUnrRot, MaxAngleDeltaUnrRot);
-
-    //     ForEach LocalPlayerControllers(class'PlayerController', PC)
-    //     {
-    //         PC.ClientMessage("RotDiff P Y R (Clamped): " @ PitchDiff @ YawDiff @ RollDiff);
-    //     }
-
-    //     NewRot = Rotation;
-    //     NewRot.Pitch += PitchDiff;
-    //     NewRot.Yaw += YawDiff;
-    //     NewRot.Roll += RollDiff;
-
-    //     // TODO: this is stupid!
-    //     // Velocity = (Speed * Normal(vector(NewRot))) /*>> Rotation*/;
-    //     Velocity = (VSize(Velocity) * Normal(vector(NewRot))) /*>> Rotation*/;
-    //     // SetRotation(NewRot);
-
-    //     // RED   = Loc -> Target.
-    //     // GREEN = Loc -> NewRot.
-    //     // BLUE  = Loc -> TargetRot.
-    //     DrawDebugLine(Location, LockedTarget.Location, 255, 15, 15, False);
-    //     DrawDebugLine(Location, (Normal(vector(NewRot)) * VSize(SelfToTarget) /*>> Rotation */), 15, 255, 15, False);
-    //     DrawDebugLine(Location, (Normal(vector(TargetRot)) * VSize(SelfToTarget) /*>> Rotation */), 15, 15, 255, False);
-    //     DrawDebugLine(Location, (Normal(vector(Rotation)) * VSize(SelfToTarget) /*>> Rotation */), 255, 255, 255, False);
-    // }
-
-    // // Tolerance for near misses.
-    // // TODO: don't check this like this! Check for collision OR near collision!
-    // // TODO: also, we can pre-calculate DamageRadiusSq * 0.25! If we really need it!
-    // if (DistanceSq <= (DamageRadiusSq * 0.25))
-    // {
-    //     `hcdebug("close enough, exploding, DistanceSq=" $ DistanceSq);
-    //     Explode(Location, Normal(Velocity));
-    // }
+    ApplyVelocityAndAccel(DeltaTime);
 }
 
 DefaultProperties
@@ -680,13 +798,15 @@ DefaultProperties
     bRotationFollowsVelocity=True
     EffectiveNavigationRatio=5
     MaximumTurnG=6
-    DampingForceScaler=0.001
+    FinArea=250.0
+    StartUpdatingTrackingSpeedPct=0.25
 
     bWaitForEffects=True
 
     SpeedPctToTrackingForceScaler={(Points=(
-        (InVal=0.00,OutVal=0.005),
-        (InVal=0.25,OutVal=0.010),
+        (InVal=0.00,OutVal=0.000),
+        (InVal=0.24,OutVal=0.001),
+        (InVal=0.25,OutVal=0.150),
         (InVal=0.50,OutVal=0.350),
         (InVal=0.75,OutVal=0.750),
         (InVal=0.80,OutVal=0.800),
@@ -697,6 +817,6 @@ DefaultProperties
 
     SmokeTrailTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_SmokeTrail'
 
-    RandomErrorMin=1.20
-    RandomErrorMax=0.80
+    RandomErrorMin=1.0 // 1.02
+    RandomErrorMax=1.0 // 0.98
 }

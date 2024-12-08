@@ -349,9 +349,13 @@ reliable private server function DoTestNapalmStrike(bool bLockX, bool bLockY)
     }
 
     if( ROTI.ArtyStrikeLocation != vect(-999999.0,-999999.0,-999999.0) )
+    {
         TargetLocation = ROTI.ArtyStrikeLocation;
+    }
     else
+    {
         TargetLocation = Pawn.Location;
+    }
 
     ROMI = ROMapInfo(WorldInfo.GetMapInfo());
 
