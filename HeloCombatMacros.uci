@@ -21,7 +21,12 @@
 `if(`isdefined(HC_DEBUG))
     `define hcdebug(msg, cond) `hclog(`msg, `cond, 'DEBUG')
     `define hcsdebug(msg, cond) `hcslog(`msg, `cond, 'DEBUG')
+
+    `define hctrace(msg, cond) \
+        `hclog(`msg, `cond, 'TRACE'); \n\
+        ROGameEngine(class'Engine'.static.GetEngine()).GetLocalPlayerController().ClientMessage("TRACE:" @ `msg);
 `else
-    `define hcdebug(msg, cond, tag)
-    `define hcsdebug(msg, cond, tag)
+    `define hcdebug(msg, cond)
+    `define hcsdebug(msg, cond)
+    `define hctrace(msg, cond)
 `endif

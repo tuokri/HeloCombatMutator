@@ -49,6 +49,20 @@ var float LastLockStartTime;
 var Actor LastLockCandidate; // TODO: this can't be an actor?!
 var Actor LastLockedTarget; // TODO: this can't be an actor?!
 
+// TODO: we need to somewhat duplicate tracking logic here.
+// When the missile is still in the tube, the weapon will track
+// the target and simulate seeker parameters, movement, etc.
+// When the missile leaves the tube, the weapon stops performing
+// tracking calcs etc. and instead copies the last values to the missile.
+// The missile itself will then continue the calculations.
+
+// 1. Trace from seeker head socket, FoV.
+// 2. If target in FoV, try to center seeker head on target.
+//      2.1 Seeker head rotation speed limited.
+// 3. Limit seeker head rotation by max angle (e.g. 40 deg).
+// 4. If no target found, interpolate towards center
+//      4.1 Seeker head rotation speed limited.
+
 simulated state Active
 {
     // TODO: This resets lock too early... Need to reset it on ADS or reload.
@@ -60,12 +74,12 @@ simulated state Active
         LastLockCandidate = None;
         // LastLockStartTime = -1;
 
-        `hcdebug(GetStateName() $ ":" @ "PreviousStateName=" $ PreviousStateName);
+        `hctrace(GetStateName() $ ":" @ "PreviousStateName=" $ PreviousStateName);
     }
 
     simulated function bool AllowFiring(byte FireModeNum = 0)
     {
-        `hcdebug("FireModeNum=" $ FireModeNum @ "LastLockedTarget=" $ LastLockedTarget);
+        `hctrace("FireModeNum=" $ FireModeNum @ "LastLockedTarget=" $ LastLockedTarget);
 
         if (LastLockedTarget != None)
         {
