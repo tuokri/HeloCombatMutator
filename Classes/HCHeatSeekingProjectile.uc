@@ -129,6 +129,9 @@ var float ForwardAccelStartTime;
 var bool bDebugLoggedAccel;
 var vector DebugLocLastTick;
 
+// TODO: USE THIS!
+var() editconst HCHeatSeekerSim SimParams;
+
 // TODO: need to be able to configure seeker offset relative to mesh center?
 //       - or just assume seeker head is at the center of the missile to simplify things?
 
@@ -824,6 +827,6 @@ DefaultProperties
 
     SmokeTrailTemplate=ParticleSystem'HC_FX.Emitter.FX_Strela2_SmokeTrail'
 
-    RandomErrorMin=1.0 // 1.02
-    RandomErrorMax=1.0 // 0.98
+    RandomErrorMin=1.05 // 1.02
+    RandomErrorMax=0.95 // 0.98
 }
