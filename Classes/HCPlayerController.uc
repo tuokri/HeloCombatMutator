@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Tuomo Kriikkula <tuokri@tuta.io>
+ * Copyright (c) 2021-2025 Tuomo Kriikkula <tuokri@tuta.io>
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -380,7 +380,7 @@ reliable private server function DoTestNapalmStrike(
     if( ROMI != none && ROMI.SouthernForce == SFOR_ARVN )
         AircraftClass = class'RONapalmStrikeAircraftARVN';
     else
-        AircraftClass = class'RONapalmStrikeAircraft';
+        AircraftClass = class'HCNapalmStrikeAircraft';
 
     SpawnLocation = GetBestAircraftSpawnLoc(TargetLocation, ROMapInfo(WorldInfo.GetMapInfo()).NapalmStrikeHeightOffset, AircraftClass);
     if (OverrideSpawnZ != 0.0)

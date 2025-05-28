@@ -21,9 +21,5 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-class HCHWeap_OH6_Minigun_Content extends HCHWeap_OH6_Minigun;
 
-DefaultProperties
-{
-    BarTexture=none
-}
+class HCNapalmStrikeAircraft extends RONapalmStrikeAircraft;
