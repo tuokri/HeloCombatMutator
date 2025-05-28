@@ -316,17 +316,35 @@ private reliable server function ServerExplodeMissiles()
     }
 }
 
-exec function ForceNapalmStrike(optional bool bLockX, optional bool bLockY)
+exec function ForceNapalmStrike(
+    optional bool bLockX,
+    optional bool bLockY,
+    optional float PitchRate = 0.0,
+    optional float YawRate = 0.0,
+    optional float RollRate = 0.0,
+    optional float OverrideLifeSpan = 0.0,
+    optional bool bWiderMapBounds = False,
+    optional float OverrideSpawnZ = 0.0
+    )
 {
     if (WorldInfo.NetMode == NM_Standalone
         || WorldInfo.IsPlayInEditor()
         || class'HeloCombatMutator'.static.IsDebugBuild())
     {
-        DoTestNapalmStrike(bLockX, bLockY);
+        DoTestNapalmStrike(bLockX, bLockY, PitchRate, YawRate, RollRate, OverrideSpawnZ);
     }
 }
 
-reliable private server function DoTestNapalmStrike(bool bLockX, bool bLockY)
+reliable private server function DoTestNapalmStrike(
+    bool bLockX,
+    bool bLockY,
+    optional float PitchRate = 0.0,
+    optional float YawRate = 0.0,
+    optional float RollRate = 0.0,
+    optional float OverrideLifeSpan = 0.0,
+    optional bool bWiderMapBounds = False,
+    optional float OverrideSpawnZ = 0.0
+    )
 {
     local vector TargetLocation, SpawnLocation;
     local class<RONapalmStrikeAircraft> AircraftClass;
@@ -365,13 +383,18 @@ reliable private server function DoTestNapalmStrike(bool bLockX, bool bLockY)
         AircraftClass = class'RONapalmStrikeAircraft';
 
     SpawnLocation = GetBestAircraftSpawnLoc(TargetLocation, ROMapInfo(WorldInfo.GetMapInfo()).NapalmStrikeHeightOffset, AircraftClass);
+    if (OverrideSpawnZ != 0.0)
+    {
+        SpawnLocation.Z = OverrideSpawnZ;
+    }
     TargetLocation.Z = SpawnLocation.Z;
 
     Aircraft = Spawn(AircraftClass,self,, SpawnLocation, rotator(TargetLocation - SpawnLocation));
 
     if (Aircraft == none)
     {
-        `hclog("Error Spawning Support Aircraft");
+        `hcerror("Error spawning napalm strike aircraft");
+        return;
     }
     else
     {
@@ -386,6 +409,32 @@ reliable private server function DoTestNapalmStrike(bool bLockX, bool bLockY)
 
         Aircraft.SetDropPoint();
     }
+
+    if (OverrideLifeSpan > 0.0)
+    {
+        Aircraft.LifeSpan = OverrideLifeSpan;
+    }
+
+    if (bWiderMapBounds)
+    {
+        Aircraft.WorldEdgeExitBuffer *= 5;
+        Aircraft.WorldEdgeSpawnBuffer *= 5;
+        Aircraft.SetWorldEdgeLimits(Aircraft.WorldEdgeExitBuffer);
+    }
+
+    if (PitchRate != 0.0)
+    {
+        Aircraft.RotationRate.Pitch = PitchRate;
+    }
+    if (YawRate != 0.0)
+    {
+        Aircraft.RotationRate.Yaw = YawRate;
+    }
+    if (RollRate != 0.0)
+    {
+        Aircraft.RotationRate.Roll = RollRate;
+    }
+    `hcdebug("RotationRate=" $ Aircraft.RotationRate);
 
     KillsWithCurrentNapalm = 0; // Reset Napalm Kills as We call it in!!!
 }
