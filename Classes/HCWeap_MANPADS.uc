@@ -63,6 +63,11 @@ var Actor LastLockedTarget; // TODO: this can't be an actor?!
 // 4. If no target found, interpolate towards center
 //      4.1 Seeker head rotation speed limited.
 
+// TODO: USE THIS!
+var() editconst HCHeatSeekerSim SimParams;
+
+var() editconst rotator SeekerHeadRotation;
+
 simulated state Active
 {
     // TODO: This resets lock too early... Need to reset it on ADS or reload.
