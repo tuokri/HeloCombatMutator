@@ -23,3 +23,11 @@
  */
 
 class HCNapalmStrikeAircraft extends RONapalmStrikeAircraft;
+
+simulated function Tick(float DeltaTime)
+{
+    super.Tick(DeltaTime);
+
+    // To make the plane able to manuever with the debug command.
+    Velocity = Velocity * Normal(Vector(Rotation));
+}
