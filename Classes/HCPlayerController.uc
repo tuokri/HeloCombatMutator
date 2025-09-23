@@ -214,19 +214,19 @@ exec function Camera(name NewMode)
 
 reliable server function ServerCamera(name NewMode)
 {
-    if (NewMode == '1st')
+    if (NewMode == '1st' || string(NewMode) ~= "firstperson")
     {
         NewMode = 'FirstPerson';
     }
-    else if (NewMode == '3rd')
+    else if (NewMode == '3rd' || string(NewMode) ~= "thirdperson")
     {
         NewMode = 'ThirdPerson';
     }
-    else if (NewMode == 'free')
+    else if (string(NewMode) ~= "free")
     {
         NewMode = 'FreeCam';
     }
-    else if (NewMode == 'fixed')
+    else if (string(NewMode) ~= "fixed")
     {
         NewMode = 'Fixed';
     }
