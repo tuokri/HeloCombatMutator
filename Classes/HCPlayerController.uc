@@ -324,14 +324,27 @@ exec function ForceNapalmStrike(
     optional float RollRate = 0.0,
     optional float OverrideLifeSpan = 0.0,
     optional bool bWiderMapBounds = False,
-    optional float OverrideSpawnZ = 0.0
+    optional float OverrideSpawnZ = 0.0,
+    optional bool bSetPlaneCamera = false,
+    optional int ManueverPitch = 0.0
     )
 {
     if (WorldInfo.NetMode == NM_Standalone
         || WorldInfo.IsPlayInEditor()
         || class'HeloCombatMutator'.static.IsDebugBuild())
     {
-        DoTestNapalmStrike(bLockX, bLockY, PitchRate, YawRate, RollRate, OverrideSpawnZ);
+        DoTestNapalmStrike(
+            bLockX,
+            bLockY,
+            PitchRate,
+            YawRate,
+            RollRate,
+            OverrideLifeSpan,
+            bWiderMapBounds,
+            OverrideSpawnZ,
+            bSetPlaneCamera,
+            ManueverPitch
+        );
     }
 }
 
@@ -343,7 +356,9 @@ reliable private server function DoTestNapalmStrike(
     optional float RollRate = 0.0,
     optional float OverrideLifeSpan = 0.0,
     optional bool bWiderMapBounds = False,
-    optional float OverrideSpawnZ = 0.0
+    optional float OverrideSpawnZ = 0.0,
+    optional bool bSetPlaneCamera = false,
+    optional int ManueverPitch = 0
     )
 {
     local vector TargetLocation, SpawnLocation;
@@ -351,10 +366,13 @@ reliable private server function DoTestNapalmStrike(
     local RONapalmStrikeAircraft Aircraft;
     local ROTeamInfo ROTI;
     local ROMapInfo ROMI;
+    local ViewTargetTransitionParams TransitionParams;
+    // local rotator NewRot;
 
-    if  (ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
-         ROPlayerReplicationInfo(PlayerReplicationInfo).RoleInfo == none ||
-         Pawn == none)
+    if (ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
+        ROPlayerReplicationInfo(PlayerReplicationInfo).RoleInfo == none ||
+        Pawn == none
+    )
     {
         return;
     }
@@ -390,6 +408,10 @@ reliable private server function DoTestNapalmStrike(
     TargetLocation.Z = SpawnLocation.Z;
 
     Aircraft = Spawn(AircraftClass,self,, SpawnLocation, rotator(TargetLocation - SpawnLocation));
+    if (HCNapalmStrikeAircraft(Aircraft) != None)
+    {
+        HCNapalmStrikeAircraft(Aircraft).ManueverPitch = ManueverPitch;
+    }
 
     if (Aircraft == none)
     {
@@ -436,7 +458,20 @@ reliable private server function DoTestNapalmStrike(
     }
     `hcdebug("RotationRate=" $ Aircraft.RotationRate);
 
+    // if (ManueverPitch != 0)
+    // {
+    //     NewRot = Aircraft.Rotation;
+    //     NewRot.Pitch += ManueverPitch;
+    //     Aircraft.SetRotation(NewRot);
+    // }
+
     KillsWithCurrentNapalm = 0; // Reset Napalm Kills as We call it in!!!
+
+    if (bSetPlaneCamera)
+    {
+        TransitionParams.BlendTime = 0.35;
+        SetViewTarget(Aircraft, TransitionParams);
+    }
 }
 
 exec function ForceCanberraStrike(optional float XDir, optional float YDir)
