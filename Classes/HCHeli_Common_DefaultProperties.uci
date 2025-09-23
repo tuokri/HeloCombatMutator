@@ -1,0 +1,7 @@
+`define HC_HELI_HUD_DEFAULTS(dummy)                                                         \n\
+    HelicopterDebugHUDFont=Font'EngineFonts.SmallFont'                                      \n\
+    HelicopterDebugHUDTextColor=(R=255, G=255, B=245, A=255)                                \n\
+    HelicopterDebugHUDFontRenderInfo=(bClipText=True, bEnableShadow=True)                   \n\
+    HelicopterDebugHUDBGTex=Texture2D'VN_UI_Textures.HUD.GameMode.UI_GM_Bar_Fill'           \n\
+    HelicopterDebugHUDBGBorder=Texture2D'VN_UI_Textures.HUD.GameMode.UI_GM_Bar_Frame'       \n\
+    HelicopterDebugHUDBGTint=(R=0.5,G=0.5,B=0.6,A=0.6)

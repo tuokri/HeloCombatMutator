@@ -1,3 +1,107 @@
+`include(HeloCombat\Classes\HCHeli_Common_DefaultProperties.uci)
+
+// TODO: this is a bit messy.
+`if(`isdefined(WITH_HELO_HUD_DEBUG))
+// Debug hud internal states.
+var vector2D TextSize;
+var int BGHeight;
+var int BGWidth;
+var int DrawRegionTopLeftX;
+var int DrawRegionTopLeftY;
+
+// The font to draw the HUD with.
+var(HelicopterDebugHUD) Font HelicopterDebugHUDFont;
+// HUD background texture. Stretched to fit.
+var(HelicopterDebugHUD) Texture2D HelicopterDebugHUDBGTex;
+// HUD background border texture. Stretched to fit.
+var(HelicopterDebugHUD) Texture2D HelicopterDebugHUDBGBorder;
+// HUD background texture tint;
+var(HelicopterDebugHUD) LinearColor HelicopterDebugHUDBGTint;
+// HUD text color.
+var(HelicopterDebugHUD) Color HelicopterDebugHUDTextColor;
+// HUD text render settings.
+var(HelicopterDebugHUD) FontRenderInfo HelicopterDebugHUDFontRenderInfo;
+
+simulated event PostBeginPlay()
+{
+    super.PostBeginPlay();
+
+`if(`isdefined(HC_DEBUG))
+    ROPlayerController(GetALocalPlayerController()).myHud.bShowOverlays = True;
+    ROPlayerController(GetALocalPlayerController()).myHud.AddPostRenderedActor(self);
+`endif
+}
+
+simulated event PostRenderFor(PlayerController PC, Canvas Canvas, vector CameraPosition, vector CameraDir)
+{
+    local HCPlayerController HCPC;
+
+    super.PostRenderFor(PC, Canvas, CameraPosition, CameraDir);
+
+    HCPC = HCPlayerController(PC);
+    if (HCPC != None && HCPC.DrawHelicopterDebugFlag > 0)
+    {
+        DoDrawHelicopterDebug(Canvas, HCPC);
+    }
+}
+
+function DoDrawHelicopterDebug(Canvas Canvas, HCPlayerController HCPC)
+{
+    Canvas.Font = HelicopterDebugHUDFont;
+    Canvas.TextSize("AAA BBB CCC DDD EEE FFF GGG HHH III JJJ KKK", TextSize.X, TextSize.Y);
+
+    // 15 lines of text + a padding of 10.
+    BGHeight = (TextSize.Y * 15) + 10;
+    BGWidth = TextSize.X + 10;
+
+    DrawRegionTopLeftX = Canvas.SizeX - ((Canvas.SizeX / 1.5) + BGWidth);
+    DrawRegionTopLeftY = (Canvas.SizeY / 12);
+
+    Canvas.SetPos(DrawRegionTopLeftX, DrawRegionTopLeftY);
+    Canvas.DrawTileStretched(
+        HelicopterDebugHUDBGTex,
+        BGWidth,
+        BGHeight,
+        0,
+        0,
+        HelicopterDebugHUDBGTex.SizeX,
+        HelicopterDebugHUDBGTex.SizeY,
+        HelicopterDebugHUDBGTint,
+        True,
+        True
+    );
+    Canvas.DrawTileStretched(
+        HelicopterDebugHUDBGBorder,
+        BGWidth,
+        BGHeight,
+        0,
+        0,
+        HelicopterDebugHUDBGBorder.SizeX,
+        HelicopterDebugHUDBGBorder.SizeY,
+        HelicopterDebugHUDBGTint,
+        True,
+        True
+    );
+
+    Canvas.SetPos(Canvas.CurX + 5, Canvas.CurY + 5); // A bit of padding.
+    Canvas.SetDrawColorStruct(HelicopterDebugHUDTextColor);
+
+    Canvas.DrawText("KeyForward        :" $ KeyForward);
+    Canvas.DrawText("KeyStrafe         :" $ KeyStrafe);
+    Canvas.DrawText("MouseTurn         :" $ MouseTurn);
+    Canvas.DrawText("MouseLookUp       :" $ MouseLookUp);
+    Canvas.DrawText("KeyUp             :" $ KeyUp);
+    Canvas.DrawText("KeyTurn           :" $ KeyTurn);
+    Canvas.DrawText("InputPitch        :" $ InputPitch);
+    Canvas.DrawText("InputRoll         :" $ InputRoll);
+    Canvas.DrawText("InputYaw          :" $ InputYaw);
+    Canvas.DrawText("CollectivePitch   :" $ CollectivePitch);
+    Canvas.DrawText("AirflowFactor     :" $ AirflowFactor);
+    Canvas.DrawText("CurrentRPM        :" $ CurrentRPM);
+    Canvas.DrawText("DesiredRPM        :" $ DesiredRPM);
+}
+`endif // WITH_HELO_HUD_DEBUG
+
 function bool DriverLeave(bool bForceLeave)
 {
     local bool bLeaving;
@@ -77,4 +181,9 @@ function bool ChangeSeat(Controller ControllerToMove, int RequestedSeat)
     // Skip ROVehicleHelicopter::ChangeSeat!
     return super(ROVehicle).ChangeSeat(ControllerToMove, RequestedSeat);
 }
-`endif
+`endif // INCLUDE_CHANGE_SEAT
+
+DefaultProperties
+{
+    `HC_HELI_HUD_DEFAULTS()
+}

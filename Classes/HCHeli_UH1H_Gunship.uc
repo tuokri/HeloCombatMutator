@@ -25,8 +25,10 @@ class HCHeli_UH1H_Gunship extends ROHeli_UH1H_Gunship
     abstract;
 
 `define INCLUDE_CHANGE_SEAT(dummy)
+`define WITH_HELO_HUD_DEBUG(dummy)
 `include(HeloCombat\Classes\HCHeli_Common.uci)
 `undefine(INCLUDE_CHANGE_SEAT)
+`undefine(WITH_HELO_HUD_DEBUG)
 
 DefaultProperties
 {
@@ -233,4 +235,7 @@ DefaultProperties
                 MuzzleFlashLightClass=(none, none), //(class'ROVehicleMGMuzzleFlashLight',class'ROVehicleMGMuzzleFlashLight'),
                 bAlternatingBarrelIndices=true,
                 )}
+
+    // TODO: add this to others if needed.
+    bPostRenderIfNotVisible=True
 }
