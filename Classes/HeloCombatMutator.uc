@@ -33,6 +33,13 @@ final static function bool IsDebugBuild()
 `endif
 }
 
+final static function bool AllowDebugCommand()
+{
+    return WorldInfo.NetMode == NM_Standalone
+        || WorldInfo.IsPlayInEditor()
+        || class'HeloCombatMutator'.static.IsDebugBuild();
+}
+
 function PreBeginPlay()
 {
     super.PreBeginPlay();
