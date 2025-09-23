@@ -787,6 +787,10 @@ function DoDrawHelicopterDebug(Canvas Canvas)
     Canvas.DrawText("InputPitch         :" $ Helo.InputPitch);
     Canvas.DrawText("InputRoll          :" $ Helo.InputRoll);
     Canvas.DrawText("InputYaw           :" $ Helo.InputYaw);
+    Canvas.DrawText("CollectivePitch    :" $ Helo.CollectivePitch);
+    Canvas.DrawText("AirflowFactor      :" $ Helo.AirflowFactor);
+    Canvas.DrawText("CurrentRPM         :" $ Helo.CurrentRPM);
+    Canvas.DrawText("DesiredRPM         :" $ Helo.DesiredRPM);
 }
 
 simulated event PostRenderFor(PlayerController PC, Canvas Canvas, vector CameraPosition, vector CameraDir)
