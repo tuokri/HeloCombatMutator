@@ -26,6 +26,8 @@ class HCPlayerController extends ROPlayerController
 
 var transient float LastSpecialMessageTime;
 
+var string MyCachedID;
+
 var HeloCombatMutator CachedHCM;
 
 simulated function PostBeginPlay()
@@ -37,6 +39,11 @@ simulated function PostBeginPlay()
         GetHCM().SetPilot(self);
         GetHCM().SetHUD();
     }
+}
+
+final function bool AllowDebugCommand()
+{
+    return GetHCM().AllowDebugCommand();
 }
 
 function PawnDied(Pawn P)
@@ -182,6 +189,16 @@ state PlayerDriving
     }
 }
 
+function string GetMyID()
+{
+    if (MyCachedID == "")
+    {
+        MyCachedID = class'ROSteamUtils'.static.UniqueIdToSteamId64(PlayerReplicationInfo.UniqueId);
+    }
+
+    return MyCachedID;
+}
+
 exec function DrawHeloCrosshair(bool bDraw)
 {
     if (ROVehicleHelicopter(Pawn) != None && HCHUD(MyROHUD) != None)
@@ -226,7 +243,7 @@ reliable server function ServerCamera(name NewMode)
 
 simulated exec function GiveStrela()
 {
-    if (class'HeloCombatMutator'.static.AllowDebugCommand())
+    if (AllowDebugCommand())
     {
         ROPawn(Pawn).LoadAndCreateInventory("HeloCombat.HCWeap_MANPADS_9K32Strela2_Content");
         ServerGiveStrela(ROPawn(Pawn));
@@ -235,13 +252,13 @@ simulated exec function GiveStrela()
 
 reliable private server function ServerGiveStrela(ROPawn ROP)
 {
-    `hclog("Pawn=" $ ROP @ "PC=" $ self @ $ "ID=" $ ROP.PlayerReplicationInfo.UniqueId @ "Name=" $ ROP.PlayerReplicationInfo.PlayerName);
+    `hclog("Pawn=" $ ROP @ "PC=" $ self @ "ID=" $ GetMyID() @ "Name=" $ ROP.PlayerReplicationInfo.PlayerName);
     ROP.LoadAndCreateInventory("HeloCombat.HCWeap_MANPADS_9K32Strela2_Content");
 }
 
 exec function ForceGunshipOrbit(optional float SpawnZOffset = 0.0)
 {
-    if (class'HeloCombatMutator'.static.AllowDebugCommand())
+    if (AllowDebugCommand())
     {
         DoGunshipTestOrbit(SpawnZOffset);
     }
@@ -253,7 +270,7 @@ reliable private server function DoGunshipTestOrbit(optional float SpawnZOffset 
     local ROGunshipAircraft Aircraft;
     local ROTeamInfo ROTI;
 
-    `hclog("PC=" $ self @ $ "ID=" $ PlayerReplicationInfo.UniqueId @ "Name=" $ PlayerReplicationInfo.PlayerName);
+    `hclog("PC=" $ self @ "ID=" $ GetMyID() @ "Name=" $ PlayerReplicationInfo.PlayerName);
 
     if ( ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
          ROPlayerReplicationInfo(PlayerReplicationInfo).RoleInfo == none ||
@@ -297,7 +314,7 @@ reliable private server function DoGunshipTestOrbit(optional float SpawnZOffset 
 
 simulated exec function ExplodeMissiles()
 {
-    if (class'HeloCombatMutator'.static.AllowDebugCommand())
+    if (AllowDebugCommand())
     {
         ServerExplodeMissiles();
     }
@@ -307,7 +324,7 @@ private reliable server function ServerExplodeMissiles()
 {
     local HCHeatSeekingProjectile Proj;
 
-    `hclog("PC=" $ self @ $ "ID=" $ PlayerReplicationInfo.UniqueId @ "Name=" $ PlayerReplicationInfo.PlayerName);
+    `hclog("PC=" $ self @ "ID=" $ GetMyID() @ "Name=" $ PlayerReplicationInfo.PlayerName);
 
     ForEach WorldInfo.AllActors(class'HCHeatSeekingProjectile', Proj)
     {
@@ -328,7 +345,7 @@ exec function ForceNapalmStrike(
     optional int ManueverPitch = 0.0
     )
 {
-    if (class'HeloCombatMutator'.static.AllowDebugCommand())
+    if (AllowDebugCommand())
     {
         DoTestNapalmStrike(
             bLockX,
@@ -366,7 +383,7 @@ reliable private server function DoTestNapalmStrike(
     local ViewTargetTransitionParams TransitionParams;
     // local rotator NewRot;
 
-    `hclog("PC=" $ self @ $ "ID=" $ PlayerReplicationInfo.UniqueId @ "Name=" $ PlayerReplicationInfo.PlayerName);
+    `hclog("PC=" $ self @ "ID=" $ GetMyID() @ "Name=" $ PlayerReplicationInfo.PlayerName);
 
     if (ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
         ROPlayerReplicationInfo(PlayerReplicationInfo).RoleInfo == none ||
@@ -480,7 +497,7 @@ exec function ForceCanberraStrike(optional float XDir, optional float YDir)
     StrikeDir.X = XDir;
     StrikeDir.Y = YDir;
 
-    if (class'HeloCombatMutator'.static.AllowDebugCommand())
+    if (AllowDebugCommand())
     {
         DoTestCanberraStrike(StrikeDir);
     }
@@ -492,7 +509,7 @@ reliable private server function DoTestCanberraStrike(optional vector2D StrikeDi
     local ROCarpetBomberAircraft Aircraft;
     local ROTeamInfo ROTI;
 
-    `hclog("PC=" $ self @ $ "ID=" $ PlayerReplicationInfo.UniqueId @ "Name=" $ PlayerReplicationInfo.PlayerName);
+    `hclog("PC=" $ self @ "ID=" $ GetMyID() @ "Name=" $ PlayerReplicationInfo.PlayerName);
 
     if (ROPlayerReplicationInfo(PlayerReplicationInfo) == none ||
         ROPlayerReplicationInfo(PlayerReplicationInfo).RoleInfo == none ||
@@ -589,7 +606,7 @@ simulated exec function HCSpawnBushrangerAllies(optional float ZOffset = 0)
 
 simulated exec function HCSpawnVehicle(string VehicleClassName, optional float ZOffset = 0)
 {
-    if (class'HeloCombatMutator'.static.AllowDebugCommand())
+    if (AllowDebugCommand())
     {
         ServerSpawnVehicle(VehicleClassName, ZOffset);
     }
@@ -607,7 +624,7 @@ private reliable server function ServerSpawnVehicle(string VehicleClassName, opt
     local class<ROVehicle> VehicleClass;
     local ROVehicle Vic;
 
-    `hclog("PC=" $ self @ $ "ID=" $ PlayerReplicationInfo.UniqueId @ "Name=" $ PlayerReplicationInfo.PlayerName);
+    `hclog("PC=" $ self @ "ID=" $ GetMyID() @ "Name=" $ PlayerReplicationInfo.PlayerName);
 
     GetPlayerViewPoint(CamLoc, CamRot);
 
@@ -631,7 +648,7 @@ private reliable server function ServerSpawnVehicle(string VehicleClassName, opt
 
 exec function ForceAerialRecon()
 {
-    if (class'HeloCombatMutator'.static.AllowDebugCommand())
+    if (AllowDebugCommand())
     {
         ServerForceAerialRecon();
     }
@@ -646,7 +663,7 @@ reliable private server function ServerForceAerialRecon()
     local int i, Team;
     local Actor AerialReconBaseActor;
 
-    `hclog("PC=" $ self @ $ "ID=" $ PlayerReplicationInfo.UniqueId @ "Name=" $ PlayerReplicationInfo.PlayerName);
+    `hclog("PC=" $ self @ "ID=" $ GetMyID() @ "Name=" $ PlayerReplicationInfo.PlayerName);
 
     ROGRI = ROGameReplicationInfo(WorldInfo.GRI);
     GameSeq = WorldInfo.GetGameSequence();

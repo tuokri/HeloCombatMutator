@@ -33,7 +33,7 @@ final static function bool IsDebugBuild()
 `endif
 }
 
-final static function bool AllowDebugCommand()
+final function bool AllowDebugCommand()
 {
     return WorldInfo.NetMode == NM_Standalone
         || WorldInfo.IsPlayInEditor()
