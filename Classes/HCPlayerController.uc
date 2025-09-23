@@ -30,6 +30,27 @@ var string MyCachedID;
 
 var HeloCombatMutator CachedHCM;
 
+// Debug hud internal states.
+var int DrawHelicopterDebugFlag;
+var vector2D TextSize;
+var int BGHeight;
+var int BGWidth;
+var int DrawRegionTopLeftX;
+var int DrawRegionTopLeftY;
+
+// The font to draw the HUD with.
+var(HelicopterDebugHUD) Font HelicopterDebugHUDFont;
+// HUD background texture. Stretched to fit.
+var(HelicopterDebugHUD) Texture2D HelicopterDebugHUDBGTex;
+// HUD background border texture. Stretched to fit.
+var(HelicopterDebugHUD) Texture2D HelicopterDebugHUDBGBorder;
+// HUD background texture tint;
+var(HelicopterDebugHUD) LinearColor HelicopterDebugHUDBGTint;
+// HUD text color.
+var(HelicopterDebugHUD) Color HelicopterDebugHUDTextColor;
+// HUD text render settings.
+var(HelicopterDebugHUD) FontRenderInfo HelicopterDebugHUDFontRenderInfo;
+
 simulated function PostBeginPlay()
 {
     super.PostBeginPlay();
@@ -696,4 +717,91 @@ reliable private client function HCNotifyAbilityActive()
     {
         myROHUD.CommanderAbilitiesWidget.Show(true);
     }
+}
+
+exec function DrawHelicopterDebug(int Flag)
+{
+    DrawHelicopterDebugFlag = Flag;
+}
+
+function DoDrawHelicopterDebug(Canvas Canvas)
+{
+    local ROVehicleHelicopter Helo;
+
+    if (Helo == None || DrawHelicopterDebugFlag == 0)
+    {
+        return;
+    }
+
+    Helo = ROVehicleHelicopter(GetMyVehicle());
+    if (Helo == None)
+    {
+        return;
+    }
+
+    Canvas.Font = HelicopterDebugHUDFont;
+    Canvas.TextSize("AAA BBB CCC DDD EEE FFF GGG HHH III JJJ KKK", TextSize.X, TextSize.Y);
+
+    // 15 lines of text + a padding of 10.
+    BGHeight = (TextSize.Y * 15) + 10;
+    BGWidth = TextSize.X + 10;
+
+    DrawRegionTopLeftX = Canvas.SizeX - ((Canvas.SizeX / 1.5) + BGWidth);
+    DrawRegionTopLeftY = (Canvas.SizeY / 12);
+
+    Canvas.SetPos(DrawRegionTopLeftX, DrawRegionTopLeftY);
+    Canvas.DrawTileStretched(
+        HelicopterDebugHUDBGTex,
+        BGWidth,
+        BGHeight,
+        0,
+        0,
+        HelicopterDebugHUDBGTex.SizeX,
+        HelicopterDebugHUDBGTex.SizeY,
+        HelicopterDebugHUDBGTint,
+        True,
+        True
+    );
+    Canvas.DrawTileStretched(
+        HelicopterDebugHUDBGBorder,
+        BGWidth,
+        BGHeight,
+        0,
+        0,
+        HelicopterDebugHUDBGBorder.SizeX,
+        HelicopterDebugHUDBGBorder.SizeY,
+        HelicopterDebugHUDBGTint,
+        True,
+        True
+    );
+
+    Canvas.SetPos(Canvas.CurX + 5, Canvas.CurY + 5); // A bit of padding.
+    Canvas.SetDrawColorStruct(HelicopterDebugHUDTextColor);
+
+    Canvas.DrawText("KeyForward         :" $ Helo.KeyForward);
+    Canvas.DrawText("KeyStrafe          :" $ Helo.KeyStrafe);
+    Canvas.DrawText("MouseTurn          :" $ Helo.MouseTurn);
+    Canvas.DrawText("MouseLookUp        :" $ Helo.MouseLookUp);
+    Canvas.DrawText("KeyUp              :" $ Helo.KeyUp);
+    Canvas.DrawText("KeyTurn            :" $ Helo.KeyTurn);
+    Canvas.DrawText("InputPitch         :" $ Helo.InputPitch);
+    Canvas.DrawText("InputRoll          :" $ Helo.InputRoll);
+    Canvas.DrawText("InputYaw           :" $ Helo.InputYaw);
+}
+
+simulated event PostRenderFor(PlayerController PC, Canvas Canvas, vector CameraPosition, vector CameraDir)
+{
+    super.PostRenderFor(PC, Canvas, CameraPosition, CameraDir);
+
+    DoDrawHelicopterDebug(Canvas);
+}
+
+DefaultProperties
+{
+    HelicopterDebugHUDFont=Font'EngineFonts.SmallFont'
+    HelicopterDebugHUDTextColor=(R=255, G=255, B=245, A=255)
+    HelicopterDebugHUDFontRenderInfo=(bClipText=True, bEnableShadow=True)
+    HelicopterDebugHUDBGTex=Texture2D'VN_UI_Textures.HUD.GameMode.UI_GM_Bar_Fill'
+    HelicopterDebugHUDBGBorder=Texture2D'VN_UI_Textures.HUD.GameMode.UI_GM_Bar_Frame'
+    HelicopterDebugHUDBGTint=(R=0.5,G=0.5,B=0.6,A=0.6)
 }
