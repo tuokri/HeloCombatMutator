@@ -56,6 +56,9 @@ function PostBeginPlay()
 }
 
 // TODO: just use the built in UI functions, no need to do this vector math manually!
+// Calculates crosshair 2D position on HUD, based on where the helicopter gun is pointing
+// in the 3D world.
+// NOTE: code is left here as a reference. Native Project and DeProject are used instead.
 function UpdateCrosshairPos()
 {
     local rotator CamRot;
@@ -92,8 +95,8 @@ function UpdateCrosshairPos()
 
     if (IsZero(GunTraceHitLoc))
     {
-        PlayerOwner.ClientMessage("GunTraceHitLoc is zero");
-        `log("GunTraceHitLoc is zero");
+        // PlayerOwner.ClientMessage("GunTraceHitLoc is zero");
+        // `hclog("GunTraceHitLoc is zero");
         CenterX = PlayerOwner.myROHUD.CenterX;
         CenterY = PlayerOwner.myROHUD.CenterY;
         return;
@@ -106,8 +109,8 @@ function UpdateCrosshairPos()
 
     if (IsZero(CamTraceHitLoc))
     {
-        PlayerOwner.ClientMessage("CamTraceHitLoc is zero");
-        `log("CamTraceHitLoc is zero");
+        // PlayerOwner.ClientMessage("CamTraceHitLoc is zero");
+        // `hclog("CamTraceHitLoc is zero");
         CenterX = PlayerOwner.myROHUD.CenterX;
         CenterY = PlayerOwner.myROHUD.CenterY;
         return;
@@ -118,15 +121,15 @@ function UpdateCrosshairPos()
     DistToGunTrace = VSize(CamToGunTraceHitLoc);
     DistToCamTrace = VSize(CamToCamTraceHitLoc);
 
-    `log("DistToGunTrace = " $ DistToGunTrace);
-    `log("DistToCamTrace = " $ DistToCamTrace);
+    // `hclog("DistToGunTrace = " $ DistToGunTrace);
+    // `hclog("DistToCamTrace = " $ DistToCamTrace);
 
     Theta = Acos((CamToGunTraceHitLoc dot CamToCamTraceHitLoc) / (DistToGunTrace * DistToCamTrace));
     K = Rad90 - Theta;
 
-    PlayerOwner.ClientMessage("Theta = " $ Theta * RadToDeg $ " deg");
-    `log("Theta = " $ Theta * RadToDeg $ " deg");
-    `log("K     = " $ K * RadToDeg $ " deg");
+    // PlayerOwner.ClientMessage("Theta = " $ Theta * RadToDeg $ " deg");
+    // `hclog("Theta = " $ Theta * RadToDeg $ " deg");
+    // `hclog("K     = " $ K * RadToDeg $ " deg");
 
     OffsetMult = (DistToCamTrace > DistToGunTrace) ? 1 : -1;
 
@@ -138,15 +141,15 @@ function UpdateCrosshairPos()
     // DrawDebugSphere(GunTraceHitLoc, 8, 8, 255, 15, 15);
     // DrawDebugSphere(CamTraceHitLoc, 8, 8, 255, 255, 15);
 
-    `log("CamLoc = " $ CamLoc);
+    // `hclog("CamLoc = " $ CamLoc);
 
     CenterX = PlayerOwner.myROHUD.CenterX + OffsetX;
     CenterY = PlayerOwner.myROHUD.CenterY + OffsetY;
 
-    PlayerOwner.ClientMessage("OffsetX = " $ OffsetX);
-    PlayerOwner.ClientMessage("OffsetY = " $ OffsetY);
-    `log("OffsetX = " $ OffsetX);
-    `log("OffsetY = " $ OffsetY);
+    // PlayerOwner.ClientMessage("OffsetX = " $ OffsetX);
+    // PlayerOwner.ClientMessage("OffsetY = " $ OffsetY);
+    // `hclog("OffsetX = " $ OffsetX);
+    // `hclog("OffsetY = " $ OffsetY);
 }
 
 /*
