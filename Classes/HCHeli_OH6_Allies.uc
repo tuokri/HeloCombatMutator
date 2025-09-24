@@ -25,8 +25,10 @@ class HCHeli_OH6_Allies extends ROHeli_OH6
     abstract;
 
 `define INCLUDE_CHANGE_SEAT(dummy)
+`define WITH_HELO_HUD_DEBUG(dummy)
 `include(HeloCombat\Classes\HCHeli_Common.uci)
 `undefine(INCLUDE_CHANGE_SEAT)
+`undefine(WITH_HELO_HUD_DEBUG)
 
 DefaultProperties
 {
