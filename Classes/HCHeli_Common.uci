@@ -50,8 +50,8 @@ function DoDrawHelicopterDebug(Canvas Canvas, HCPlayerController HCPC)
     Canvas.Font = HelicopterDebugHUDFont;
     Canvas.TextSize("AAA BBB CCC DDD EEE FFF GGG HHH III JJJ KKK", TextSize.X, TextSize.Y);
 
-    // 15 lines of text + a padding of 10.
-    BGHeight = (TextSize.Y * 15) + 10;
+    // 17 lines of text + a padding of 10.
+    BGHeight = (TextSize.Y * 17) + 10;
     BGWidth = TextSize.X + 10;
 
     DrawRegionTopLeftX = Canvas.SizeX - ((Canvas.SizeX / 1.5) + BGWidth);
@@ -99,6 +99,10 @@ function DoDrawHelicopterDebug(Canvas Canvas, HCPlayerController HCPC)
     Canvas.DrawText("AirflowFactor     :" $ AirflowFactor);
     Canvas.DrawText("CurrentRPM        :" $ CurrentRPM);
     Canvas.DrawText("DesiredRPM        :" $ DesiredRPM);
+    Canvas.DrawText("CurrentPitch      :" $ CurrentPitch);
+    Canvas.DrawText("CurrentRoll       :" $ CurrentRoll);
+    Canvas.DrawText("CurrentPitchCos   :" $ Cos(CurrentPitch * 0.0000958738));
+    Canvas.DrawText("CurrentRollCos    :" $ Cos(CurrentRoll * 0.0000958738));
 }
 `endif // WITH_HELO_HUD_DEBUG
 
