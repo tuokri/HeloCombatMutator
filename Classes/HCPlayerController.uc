@@ -73,6 +73,8 @@ function HeloCombatMutator GetHCM()
         Mut = Mut.NextMutator;
     }
 
+    `hcerror("could not find HeloCombatMutator!");
+
     CachedHCM = HCM;
     return HCM;
 }
